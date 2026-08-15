@@ -13,7 +13,6 @@ import { MemberDetailModal } from './components/modals/MemberDetailModal';
 import { ReceiptModal } from './components/modals/ReceiptModal';
 import { Member } from './types';
 import { PiggyBank, ShieldCheck, Heart } from 'lucide-react';
-import { AppLogo } from './components/common/AppLogo';
 
 function AppContent() {
   const { currentUser, userRole, activeReceipt, setActiveReceipt } = useSusu();
@@ -89,8 +88,10 @@ function AppContent() {
       {/* Footer */}
       <footer className="bg-[#383B2B] border-t border-[#4A4D3A] text-[#C8C5B8] py-6 text-xs mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <AppLogo size="sm" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-[#8E9775] flex items-center justify-center text-[#F9F8F4]">
+              <PiggyBank className="w-3.5 h-3.5" />
+            </div>
             <span className="font-serif-brand font-bold text-white tracking-tight">
               BENDAZ SUSU APP
             </span>

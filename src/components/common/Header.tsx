@@ -20,7 +20,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CurrencyCode, UserRole } from '../../types';
-import { AppLogo } from './AppLogo';
 
 interface HeaderProps {
   onOpenDepositModal: () => void;
@@ -142,7 +141,9 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo & Tagline */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <AppLogo size="md" />
+              <div className="w-10 h-10 rounded-2xl bg-[#2C2E22] border border-[#4A4D3A] flex items-center justify-center font-serif-brand font-bold text-xl text-[#EAE7DC] shadow-md">
+                B
+              </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-serif-brand font-bold text-2xl tracking-tight text-[#F9F8F4]">
