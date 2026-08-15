@@ -63,9 +63,12 @@ export const LoginPage: React.FC = () => {
       <header className="border-b border-[#E3DFC9] bg-[#EFECE3] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#383B2B] text-[#EAE7DC] flex items-center justify-center font-serif-brand font-bold text-xl shadow-md border border-[#4A4D3A]">
-              B
-            </div>
+            <img
+              src="/app-icon.png"
+              alt="BENDAZ SUSU Desktop Icon"
+              referrerPolicy="no-referrer"
+              className="w-11 h-11 rounded-2xl shadow-md border border-[#4A4D3A] object-cover"
+            />
             <div>
               <h1 className="font-serif-brand font-bold text-lg text-[#383B2B] tracking-tight flex items-center gap-2">
                 BENDAZ SUSU APP

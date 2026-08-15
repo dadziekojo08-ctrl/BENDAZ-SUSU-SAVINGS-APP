@@ -1,0 +1,30 @@
+{
+  "short_name": "BENDAZ SUSU",
+  "name": "BENDAZ SUSU - Savings & Mobile Banker Operations",
+  "description": "Daily Susu savings collection platform for mobile bankers, member tracking, and real-time route management.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#2E3123",
+  "theme_color": "#383B2B",
+  "display": "standalone",
+  "orientation": "any"
+}

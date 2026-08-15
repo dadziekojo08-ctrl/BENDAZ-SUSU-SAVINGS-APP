@@ -141,9 +141,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo & Tagline */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#2C2E22] border border-[#4A4D3A] flex items-center justify-center font-serif-brand font-bold text-xl text-[#EAE7DC] shadow-md">
-                B
-              </div>
+              <img
+                src="/app-icon.png"
+                alt="BENDAZ SUSU Desktop Icon"
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-2xl shadow-md border border-[#4A4D3A] object-cover"
+              />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-serif-brand font-bold text-2xl tracking-tight text-[#F9F8F4]">
