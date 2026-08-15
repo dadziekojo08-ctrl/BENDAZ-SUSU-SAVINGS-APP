@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { AppLogo } from '../common/AppLogo';
 
 export const LoginPage: React.FC = () => {
   const { login, bankers } = useSusu();
@@ -63,12 +64,7 @@ export const LoginPage: React.FC = () => {
       <header className="border-b border-[#E3DFC9] bg-[#EFECE3] px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src="/app-icon.png"
-              alt="BENDAZ SUSU Desktop Icon"
-              referrerPolicy="no-referrer"
-              className="w-11 h-11 rounded-2xl shadow-md border border-[#4A4D3A] object-cover"
-            />
+            <AppLogo size="lg" />
             <div>
               <h1 className="font-serif-brand font-bold text-lg text-[#383B2B] tracking-tight flex items-center gap-2">
                 BENDAZ SUSU APP

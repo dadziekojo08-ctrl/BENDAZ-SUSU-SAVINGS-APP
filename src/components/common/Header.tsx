@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CurrencyCode, UserRole } from '../../types';
+import { AppLogo } from './AppLogo';
 
 interface HeaderProps {
   onOpenDepositModal: () => void;
@@ -141,12 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Brand Logo & Tagline */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img
-                src="/app-icon.png"
-                alt="BENDAZ SUSU Desktop Icon"
-                referrerPolicy="no-referrer"
-                className="w-10 h-10 rounded-2xl shadow-md border border-[#4A4D3A] object-cover"
-              />
+              <AppLogo size="md" />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-serif-brand font-bold text-2xl tracking-tight text-[#F9F8F4]">
