@@ -73,6 +73,7 @@ export const RecordDepositModal: React.FC<RecordDepositModalProps> = ({
     (m) =>
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.phone.includes(searchQuery) ||
+      (m.accountNumber && m.accountNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
       m.locationStall.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.id.toLowerCase().includes(searchQuery.toLowerCase())
   );

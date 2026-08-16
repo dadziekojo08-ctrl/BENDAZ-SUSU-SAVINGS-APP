@@ -45,6 +45,7 @@ export interface Banker {
 
 export interface Member {
   id: string;
+  accountNumber?: string; // Auto-generated official Susu Account Number (e.g. SSU-100234)
   name: string;
   phone: string;
   avatar: string;

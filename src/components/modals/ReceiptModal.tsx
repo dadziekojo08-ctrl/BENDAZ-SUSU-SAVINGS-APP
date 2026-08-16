@@ -149,8 +149,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ transaction, onClose
               </div>
 
               <div className="flex justify-between">
-                <span className="text-[#7A7A65]">Member ID / Phone:</span>
-                <span className="text-[#5A5A40] font-mono">{transaction.memberId} • {transaction.memberPhone}</span>
+                <span className="text-[#7A7A65]">Susu Account #:</span>
+                <span className="text-[#383B2B] font-mono font-bold">{member?.accountNumber || transaction.memberId}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-[#7A7A65]">Contact Phone:</span>
+                <span className="text-[#5A5A40] font-mono">{transaction.memberPhone}</span>
               </div>
 
               {member?.locationStall && (

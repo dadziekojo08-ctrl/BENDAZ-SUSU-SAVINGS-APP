@@ -160,6 +160,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         !query ||
         m.name.toLowerCase().includes(query) ||
         m.phone.includes(query) ||
+        (m.accountNumber && m.accountNumber.toLowerCase().includes(query)) ||
         m.locationStall.toLowerCase().includes(query) ||
         m.id.toLowerCase().includes(query) ||
         (m.assignedBankerName && m.assignedBankerName.toLowerCase().includes(query)) ||
@@ -256,7 +257,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             className="bg-[#8E9775] hover:bg-[#7D8665] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 text-[#EAE7DC]" />
-            <span>Onboard Saver</span>
+            <span>Create Account</span>
           </button>
 
           <button
@@ -1040,7 +1041,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="bg-[#8E9775] hover:bg-[#7D8665] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Onboard Saver</span>
+                    <span>Create Account</span>
                   </button>
                 </div>
               </div>
@@ -1214,7 +1215,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       onClick={onOpenNewMember}
                       className="px-3.5 py-2 bg-[#8E9775] hover:bg-[#7D8665] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                     >
-                      Onboard New Saver
+                      Create Account
                     </button>
                   </div>
                 </div>
@@ -1247,7 +1248,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <img src={m.avatar} alt={m.name} className="w-8 h-8 rounded-full object-cover" />
                                 <div>
                                   <span className="font-bold text-[#3A3D2C] block">{m.name}</span>
-                                  <span className="font-mono text-[10px] text-[#8A8A70]">{m.id} • {m.phone}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-bold text-[10px] text-[#5A5E46] bg-[#8E9775]/20 px-1.5 py-0.2 rounded">
+                                      {m.accountNumber || m.id}
+                                    </span>
+                                    <span className="text-[10px] text-[#8A8A70]">{m.phone}</span>
+                                  </div>
                                 </div>
                               </div>
                             </td>

@@ -73,6 +73,7 @@ export const supabaseService = {
 
       const members: Member[] = (membersData || []).map((m: any) => ({
         id: m.id,
+        accountNumber: m.account_number || m.accountNumber || m.id,
         name: m.name,
         phone: m.phone || '',
         avatar: m.avatar || '',
@@ -177,6 +178,7 @@ export const supabaseService = {
     try {
       await supabase.from('members').upsert({
         id: member.id,
+        account_number: member.accountNumber || member.id,
         name: member.name,
         phone: member.phone,
         avatar: member.avatar,

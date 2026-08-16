@@ -63,8 +63,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-serif-brand font-bold text-xl text-[#F9F8F4]">{member.name}</h2>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-lg bg-[#8E9775]/25 text-[#EAE7DC] border border-[#8E9775]/40">
-                  {member.id}
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-[#8E9775]/25 text-[#EAE7DC] border border-[#8E9775]/40">
+                  {member.accountNumber || member.id}
                 </span>
                 {member.status === 'cycle_ready' && (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#C27D50]/25 text-[#EAE7DC] border border-[#C27D50]/40">

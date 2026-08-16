@@ -401,10 +401,11 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBankers((prev) => prev.filter((b) => b.id !== id));
   };
 
-  // Add Member
-  const addMember = (data: Omit<Member, 'id' | 'totalBalance' | 'officeFeePaid' | 'totalSavingsAllTime' | 'totalWithdrawnAllTime' | 'currentCyclePaidDays' | 'status' | 'joinedDate' | 'visitedToday' | 'depositedToday' | 'stamps'> & { initialDeposit?: number }) => {
+  // Add Member / Create Account
+  const addMember = (data: Omit<Member, 'id' | 'totalBalance' | 'officeFeePaid' | 'totalSavingsAllTime' | 'totalWithdrawnAllTime' | 'currentCyclePaidDays' | 'status' | 'joinedDate' | 'visitedToday' | 'depositedToday' | 'stamps'> & { initialDeposit?: number; accountNumber?: string }) => {
     const nextNum = 1000 + members.length + 1;
     const newId = `MB-${nextNum}`;
+    const autoAccountNumber = data.accountNumber || `SSU-${Math.floor(100000 + Math.random() * 900000)}`;
     const initialDeposit = data.initialDeposit || 0;
     
     // Business Rule: First deposit is retained for the Office
@@ -431,9 +432,10 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const newMember: Member = {
       id: newId,
+      accountNumber: autoAccountNumber,
       name: data.name,
       phone: data.phone,
-      avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
+      avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name)}`,
       assignedBankerId: data.assignedBankerId,
       assignedBankerName: data.assignedBankerName,
       routeId: data.routeId,
@@ -511,9 +513,10 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       targetId: newId,
       targetName: data.name,
       amount: initialDeposit,
-      description: `New saver "${data.name}" registered with daily target ${formatMoney(data.dailyTarget)} on route "${data.routeName || 'Default Route'}"${initialDeposit > 0 ? ` (Initial Day 1 deposit: ${formatMoney(initialDeposit)})` : ''}.`,
+      description: `Account created for "${data.name}" (Account #${autoAccountNumber}) with daily pledge of ${formatMoney(data.dailyTarget)} on route "${data.routeName || 'Default Route'}"${initialDeposit > 0 ? ` (Initial Day 1 deposit: ${formatMoney(initialDeposit)})` : ''}.`,
       details: {
         memberId: newId,
+        accountNumber: autoAccountNumber,
         phone: data.phone,
         route: data.routeName,
         locationStall: data.locationStall,

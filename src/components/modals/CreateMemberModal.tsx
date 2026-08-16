@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSusu } from '../../context/SusuContext';
 import {
   X,
@@ -9,6 +9,9 @@ import {
   CheckCircle2,
   AlertCircle,
   PiggyBank,
+  Hash,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface CreateMemberModalProps {
@@ -22,7 +25,7 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
   onClose,
   defaultBankerId,
 }) => {
-  const { addMember, bankers, routes, getCurrencySymbol, activeBankerId } = useSusu();
+  const { addMember, bankers, routes, getCurrencySymbol, activeBankerId, members } = useSusu();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,6 +34,16 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
   const [assignedBankerId, setAssignedBankerId] = useState(defaultBankerId || activeBankerId || bankers[0]?.id || '');
   const [routeId, setRouteId] = useState(routes[0]?.id || 'RT-01');
   const [error, setError] = useState('');
+  const [accountSeed, setAccountSeed] = useState(() => Math.floor(100000 + Math.random() * 900000));
+
+  // Automatically generated Susu Account Number
+  const generatedAccountNumber = useMemo(() => {
+    return `SSU-${accountSeed}`;
+  }, [accountSeed]);
+
+  const handleRegenerateAccount = () => {
+    setAccountSeed(Math.floor(100000 + Math.random() * 900000));
+  };
 
   if (!isOpen) return null;
 
@@ -39,11 +52,11 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
     setError('');
 
     if (!name.trim()) {
-      setError('Please enter member name');
+      setError('Please enter saver / member name');
       return;
     }
     if (!phone.trim()) {
-      setError('Please enter contact phone');
+      setError('Please enter contact phone number');
       return;
     }
     if (!locationStall.trim()) {
@@ -56,9 +69,10 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
 
     try {
       addMember({
+        accountNumber: generatedAccountNumber,
         name: name.trim(),
         phone: phone.trim(),
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name.trim())}`,
         assignedBankerId: assignedBankerId,
         assignedBankerName: banker?.name || 'Assigned Collector',
         routeId: routeId,
@@ -70,7 +84,7 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to onboard member');
+      setError(err.message || 'Failed to create account');
     }
   };
 
@@ -84,8 +98,8 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
               <PiggyBank className="w-5 h-5 text-[#8E9775]" />
             </div>
             <div>
-              <h2 className="font-serif-brand font-bold text-lg text-[#F9F8F4]">Onboard New Saver</h2>
-              <p className="text-xs text-[#D8D5C8]">Issue new 31-day Susu savings card</p>
+              <h2 className="font-serif-brand font-bold text-lg text-[#F9F8F4]">Create Account</h2>
+              <p className="text-xs text-[#D8D5C8]">Generate Susu account & issue 31-day passbook</p>
             </div>
           </div>
           <button
@@ -104,6 +118,36 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
               <span>{error}</span>
             </div>
           )}
+
+          {/* Auto-Generated Susu Account Number Box */}
+          <div className="bg-white p-3.5 rounded-xl border border-[#8E9775]/40 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#8E9775]/20 text-[#383B2B] flex items-center justify-center font-bold">
+                <Hash className="w-4 h-4 text-[#5A5E46]" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7A65] flex items-center gap-1">
+                  <span>Auto-Generated Susu Account #</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#8E9775]/25 text-[#383B2B] text-[9px] font-mono font-bold">
+                    Official
+                  </span>
+                </span>
+                <div className="text-base font-extrabold font-mono text-[#383B2B] tracking-wide">
+                  {generatedAccountNumber}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRegenerateAccount}
+              className="p-1.5 hover:bg-[#F4F1EA] rounded-lg text-[#7A7A65] hover:text-[#383B2B] transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer"
+              title="Generate new account number"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="text-[11px] hidden sm:inline">Refresh</span>
+            </button>
+          </div>
 
           {/* Member Name & Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -176,6 +220,9 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
                 className="w-full pl-9 pr-3 py-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-bold font-display focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
               />
             </div>
+            <p className="text-[11px] text-[#7A7A65] mt-1">
+              *First daily contribution is retained for the Office per Susu standard rules. Subsequent deposits form the withdrawable savings balance.
+            </p>
           </div>
 
           {/* Assigned Banker & Route */}
@@ -233,7 +280,7 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
               className="px-6 py-2.5 rounded-xl bg-[#8E9775] hover:bg-[#7D8665] text-white text-xs font-bold flex items-center gap-2 shadow-md transition-transform active:scale-95 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Issue Susu Card & Register</span>
+              <span>Create Account</span>
             </button>
           </div>
         </form>

@@ -99,6 +99,7 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
         m.name.toLowerCase().includes(query) ||
         m.locationStall.toLowerCase().includes(query) ||
         m.phone.includes(query) ||
+        (m.accountNumber && m.accountNumber.toLowerCase().includes(query)) ||
         m.id.toLowerCase().includes(query) ||
         (m.assignedBankerName && m.assignedBankerName.toLowerCase().includes(query));
 
@@ -189,7 +190,7 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
               className="bg-white/10 hover:bg-white/20 text-[#F9F8F4] border border-white/20 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5 text-[#8E9775]" />
-              <span>+ New Saver</span>
+              <span>Create Account</span>
             </button>
           </div>
         </div>
@@ -411,8 +412,8 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-sm text-[#3A3D2C]">{member.name}</h4>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#EAE7DC] text-[#5A5A40]">
-                          {member.id}
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#EAE7DC] text-[#4A5038]">
+                          {member.accountNumber || member.id}
                         </span>
                         {isPaid ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8E9775]/20 text-[#4A5038] border border-[#8E9775]/30 flex items-center gap-1">

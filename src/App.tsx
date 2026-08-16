@@ -54,7 +54,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9F8F4] text-[#4A4A40] flex flex-col selection:bg-[#8E9775] selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col selection:bg-emerald-500 selection:text-white">
       {/* Top Application Header */}
       <Header
         onOpenDepositModal={() => handleOpenDeposit()}
@@ -86,22 +86,22 @@ function AppContent() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#383B2B] border-t border-[#4A4D3A] text-[#C8C5B8] py-6 text-xs mt-auto">
+      <footer className="bg-[#0F172A] border-t border-slate-800 text-slate-400 py-6 text-xs mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-[#8E9775] flex items-center justify-center text-[#F9F8F4]">
+            <div className="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-xs">
               <PiggyBank className="w-3.5 h-3.5" />
             </div>
             <span className="font-serif-brand font-bold text-white tracking-tight">
               BENDAZ SUSU APP
             </span>
-            <span className="text-[#646850]">|</span>
-            <span className="text-[#B8B5A8]">Ghana Daily Thrift & Field Banker Collection System</span>
+            <span className="text-slate-700">|</span>
+            <span className="text-slate-300">Ghana Daily Thrift & Field Banker Collection System</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] text-[#B8B5A8]">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#8E9775]" />
+          <div className="flex items-center gap-4 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               Secure Field Ledger & Central Office Controls
             </span>
             <span>•</span>
