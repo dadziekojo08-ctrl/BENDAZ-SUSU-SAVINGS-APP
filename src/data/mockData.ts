@@ -12,26 +12,54 @@ export const INITIAL_RECONCILIATIONS: ReconciliationRecord[] = [];
 
 export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [];
 
-// Local storage key helper
-const STORAGE_KEY = 'bendaz_susu_app_data_v5';
+// Primary and legacy storage keys for reliable backward compatibility
+const PRIMARY_STORAGE_KEY = 'bendaz_susu_app_data_v5';
+const FALLBACK_KEYS = [
+  'bendaz_susu_app_data_v5',
+  'bendaz_susu_app_data_v4',
+  'bendaz_susu_app_data_v3',
+  'bendaz_susu_app_data_v2',
+  'bendaz_susu_app_data_v1',
+  'bendaz_susu_app_data',
+];
 
-export const loadStoredData = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        bankers: parsed.bankers || [],
-        members: parsed.members || [],
-        transactions: parsed.transactions || [],
-        routes: parsed.routes || [],
-        reconciliations: parsed.reconciliations || [],
-        auditLogs: parsed.auditLogs || [],
-      };
+export interface StoredSusuData {
+  bankers: Banker[];
+  members: Member[];
+  transactions: Transaction[];
+  routes: Route[];
+  reconciliations: ReconciliationRecord[];
+  auditLogs: AuditLogEntry[];
+}
+
+export const loadStoredData = (): StoredSusuData => {
+  for (const key of FALLBACK_KEYS) {
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          parsed &&
+          (Array.isArray(parsed.members) ||
+            Array.isArray(parsed.bankers) ||
+            Array.isArray(parsed.transactions) ||
+            Array.isArray(parsed.routes))
+        ) {
+          return {
+            bankers: Array.isArray(parsed.bankers) ? parsed.bankers : [],
+            members: Array.isArray(parsed.members) ? parsed.members : [],
+            transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+            routes: Array.isArray(parsed.routes) ? parsed.routes : [],
+            reconciliations: Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [],
+            auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
+          };
+        }
+      }
+    } catch (e) {
+      console.warn(`Could not load from storage key ${key}:`, e);
     }
-  } catch (e) {
-    console.error('Failed to load from storage', e);
   }
+
   return {
     bankers: [],
     members: [],
@@ -42,18 +70,15 @@ export const loadStoredData = () => {
   };
 };
 
-export const saveStoredData = (data: {
-  bankers: Banker[];
-  members: Member[];
-  transactions: Transaction[];
-  routes: Route[];
-  reconciliations: ReconciliationRecord[];
-  auditLogs: AuditLogEntry[];
-}) => {
+export const saveStoredData = (data: StoredSusuData): boolean => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const payload = JSON.stringify(data);
+    localStorage.setItem(PRIMARY_STORAGE_KEY, payload);
+    return true;
   } catch (e) {
-    console.error('Failed to save to storage', e);
+    console.error('Failed to save to localStorage:', e);
+    return false;
   }
 };
+
 

@@ -164,7 +164,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  // Sync core data to local storage on changes
+  // Sync core data to local storage reactively on changes
   useEffect(() => {
     saveStoredData({
       bankers,
@@ -176,32 +176,74 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [bankers, members, transactions, routes, reconciliations, auditLogs]);
 
-  // Initial cloud fetch from Supabase
+  // Initial cloud fetch from Supabase (merges non-destructively)
   const loadCloudData = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    const cloudData = await supabaseService.fetchAllData();
-    if (cloudData) {
-      setIsCloudConnected(true);
-      if (cloudData.bankers.length > 0) setBankers(cloudData.bankers);
-      if (cloudData.routes.length > 0) setRoutes(cloudData.routes);
-      if (cloudData.members.length > 0) setMembers(cloudData.members);
-      if (cloudData.transactions.length > 0) setTransactions(cloudData.transactions);
-      if (cloudData.reconciliations.length > 0) setReconciliations(cloudData.reconciliations);
-      if (cloudData.auditLogs.length > 0) setAuditLogs(cloudData.auditLogs);
+    try {
+      const cloudData = await supabaseService.fetchAllData();
+      if (cloudData) {
+        setIsCloudConnected(true);
+        if (cloudData.bankers && cloudData.bankers.length > 0) {
+          setBankers((prev) => {
+            const cloudIds = new Set(cloudData.bankers.map((b) => b.id));
+            const localOnly = prev.filter((b) => !cloudIds.has(b.id));
+            return [...cloudData.bankers, ...localOnly];
+          });
+        }
+        if (cloudData.routes && cloudData.routes.length > 0) {
+          setRoutes((prev) => {
+            const cloudIds = new Set(cloudData.routes.map((r) => r.id));
+            const localOnly = prev.filter((r) => !cloudIds.has(r.id));
+            return [...cloudData.routes, ...localOnly];
+          });
+        }
+        if (cloudData.members && cloudData.members.length > 0) {
+          setMembers((prev) => {
+            const cloudIds = new Set(cloudData.members.map((m) => m.id));
+            const localOnly = prev.filter((m) => !cloudIds.has(m.id));
+            return [...cloudData.members, ...localOnly];
+          });
+        }
+        if (cloudData.transactions && cloudData.transactions.length > 0) {
+          setTransactions((prev) => {
+            const cloudIds = new Set(cloudData.transactions.map((t) => t.id));
+            const localOnly = prev.filter((t) => !cloudIds.has(t.id));
+            return [...cloudData.transactions, ...localOnly];
+          });
+        }
+        if (cloudData.reconciliations && cloudData.reconciliations.length > 0) {
+          setReconciliations((prev) => {
+            const cloudIds = new Set(cloudData.reconciliations.map((rc) => rc.id));
+            const localOnly = prev.filter((rc) => !cloudIds.has(rc.id));
+            return [...cloudData.reconciliations, ...localOnly];
+          });
+        }
+        if (cloudData.auditLogs && cloudData.auditLogs.length > 0) {
+          setAuditLogs((prev) => {
+            const cloudIds = new Set(cloudData.auditLogs.map((a) => a.id));
+            const localOnly = prev.filter((a) => !cloudIds.has(a.id));
+            return [...cloudData.auditLogs, ...localOnly];
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud sync skipped:', e);
     }
   }, []);
 
   useEffect(() => {
-    loadCloudData();
-
-    // Subscribe to real-time changes across multiple sessions
-    const unsubscribe = supabaseService.subscribeToChanges(() => {
+    if (isSupabaseConfigured) {
       loadCloudData();
-    });
 
-    return () => {
-      unsubscribe();
-    };
+      // Subscribe to real-time changes across multiple sessions
+      const unsubscribe = supabaseService.subscribeToChanges(() => {
+        loadCloudData();
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }
   }, [loadCloudData]);
 
   const userRole: UserRole = currentUser?.role || 'admin';
@@ -356,7 +398,16 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastActive: 'Just registered',
       password: data.password || '1234',
     };
-    setBankers((prev) => [newBanker, ...prev]);
+    const updatedBankers = [newBanker, ...bankers];
+    setBankers(updatedBankers);
+    saveStoredData({
+      bankers: updatedBankers,
+      members,
+      transactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
     supabaseService.upsertBanker(newBanker);
 
     // Audit log
@@ -384,21 +435,41 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update Banker
   const updateBanker = (id: string, updates: Partial<Banker>) => {
-    setBankers((prev) =>
-      prev.map((b) => {
+    setBankers((prev) => {
+      const updatedList = prev.map((b) => {
         if (b.id === id) {
           const updated = { ...b, ...updates };
           supabaseService.upsertBanker(updated);
           return updated;
         }
         return b;
-      })
-    );
+      });
+      saveStoredData({
+        bankers: updatedList,
+        members,
+        transactions,
+        routes,
+        reconciliations,
+        auditLogs,
+      });
+      return updatedList;
+    });
   };
 
   // Delete Banker
   const deleteBanker = (id: string) => {
-    setBankers((prev) => prev.filter((b) => b.id !== id));
+    setBankers((prev) => {
+      const updatedList = prev.filter((b) => b.id !== id);
+      saveStoredData({
+        bankers: updatedList,
+        members,
+        transactions,
+        routes,
+        reconciliations,
+        auditLogs,
+      });
+      return updatedList;
+    });
   };
 
   // Add Member / Create Account
@@ -458,30 +529,28 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stamps,
     };
 
-    setMembers((prev) => [newMember, ...prev]);
-    supabaseService.upsertMember(newMember);
-
-    // Update banker member count & collected metric
+    let updatedBankers = bankers;
     if (data.assignedBankerId) {
-      setBankers((prev) =>
-        prev.map((b) => {
-          if (b.id === data.assignedBankerId) {
-            const updatedB = {
-              ...b,
-              assignedMemberCount: (b.assignedMemberCount || 0) + 1,
-              collectedToday: initialDeposit > 0 ? b.collectedToday + initialDeposit : b.collectedToday,
-            };
-            supabaseService.upsertBanker(updatedB);
-            return updatedB;
-          }
-          return b;
-        })
-      );
+      updatedBankers = bankers.map((b) => {
+        if (b.id === data.assignedBankerId) {
+          const updatedB = {
+            ...b,
+            assignedMemberCount: (b.assignedMemberCount || 0) + 1,
+            collectedToday: initialDeposit > 0 ? b.collectedToday + initialDeposit : b.collectedToday,
+          };
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
+        }
+        return b;
+      });
+      setBankers(updatedBankers);
     }
 
+    let tx: Transaction | null = null;
+    let updatedTransactions = transactions;
     if (initialDeposit > 0) {
       const receiptNo = `REC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const tx: Transaction = {
+      tx = {
         id: `TX-${Date.now()}`,
         receiptNumber: receiptNo,
         type: 'DEPOSIT',
@@ -500,9 +569,24 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'COMPLETED',
         notes: 'Day 1 initial deposit retained for the Office per Susu policy',
       };
-      setTransactions((prev) => [tx, ...prev]);
+      updatedTransactions = [tx, ...transactions];
+      setTransactions(updatedTransactions);
       supabaseService.insertTransaction(tx);
     }
+
+    const updatedMembers = [newMember, ...members];
+    setMembers(updatedMembers);
+    supabaseService.upsertMember(newMember);
+
+    // Save immediately and synchronously to local storage
+    saveStoredData({
+      bankers: updatedBankers,
+      members: updatedMembers,
+      transactions: updatedTransactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
 
     // Audit log member creation
     addAuditLog({
@@ -532,16 +616,25 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update Member
   const updateMember = (id: string, updates: Partial<Member>) => {
-    setMembers((prev) =>
-      prev.map((m) => {
+    setMembers((prev) => {
+      const updatedList = prev.map((m) => {
         if (m.id === id) {
           const updated = { ...m, ...updates };
           supabaseService.upsertMember(updated);
           return updated;
         }
         return m;
-      })
-    );
+      });
+      saveStoredData({
+        bankers,
+        members: updatedList,
+        transactions,
+        routes,
+        reconciliations,
+        auditLogs,
+      });
+      return updatedList;
+    });
   };
 
   // Record Member Deposit
