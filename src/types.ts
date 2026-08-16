@@ -134,3 +134,30 @@ export interface ReconciliationRecord {
   settlementTime: string;
   notes?: string;
 }
+
+export type AuditActionType =
+  | 'MEMBER_CREATED'
+  | 'DEPOSIT_RECORDED'
+  | 'WITHDRAWAL_REQUESTED'
+  | 'WITHDRAWAL_APPROVED'
+  | 'WITHDRAWAL_REJECTED'
+  | 'WITHDRAWAL_DISBURSED'
+  | 'BANKER_CREATED'
+  | 'RECONCILIATION_SETTLED';
+
+export type AuditSeverity = 'info' | 'success' | 'warning' | 'alert';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: AuditActionType;
+  actorName: string;
+  actorRole: 'admin' | 'banker' | 'system';
+  targetType: 'member' | 'banker' | 'transaction' | 'reconciliation';
+  targetId: string;
+  targetName?: string;
+  amount?: number;
+  description: string;
+  details?: Record<string, any>;
+  severity: AuditSeverity;
+}

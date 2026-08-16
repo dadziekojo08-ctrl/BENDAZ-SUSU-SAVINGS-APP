@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Banker,
@@ -6,6 +6,7 @@ import {
   Route,
   Transaction,
   ReconciliationRecord,
+  AuditLogEntry,
   UserRole,
   AuthUser,
   CurrencyCode,
@@ -16,12 +17,9 @@ import {
 import {
   loadStoredData,
   saveStoredData,
-  INITIAL_BANKERS,
-  INITIAL_MEMBERS,
-  INITIAL_ROUTES,
-  INITIAL_TRANSACTIONS,
-  INITIAL_RECONCILIATIONS,
 } from '../data/mockData';
+import { supabaseService } from '../lib/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 const AUTH_STORAGE_KEY = 'bendaz_auth_user_v2';
 
@@ -49,6 +47,7 @@ interface SusuContextType {
   transactions: Transaction[];
   routes: Route[];
   reconciliations: ReconciliationRecord[];
+  auditLogs: AuditLogEntry[];
 
   // Computed Metrics & Helpers
   activeBanker: Banker | undefined;
@@ -60,6 +59,7 @@ interface SusuContextType {
   pendingWithdrawalsCount: number;
   totalSystemSavings: number;
   totalOfficeRevenue: number;
+  isCloudConnected: boolean;
 
   // Actions
   addBanker: (banker: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { password?: string }) => Banker;
@@ -92,6 +92,10 @@ interface SusuContextType {
   disburseWithdrawal: (transactionId: string, disbursedBy?: string) => void;
   settleBankerCash: (bankerId: string, cashReceived: number, notes?: string) => ReconciliationRecord;
 
+  // Audit Logs
+  addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+  clearAuditLogs: () => void;
+
   // Receipts & Utilities
   activeReceipt: Transaction | null;
   setActiveReceipt: (tx: Transaction | null) => void;
@@ -116,7 +120,6 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('Error loading auth state', e);
     }
-    // Strictly unauthenticated by default - force login before accessing the app
     return null;
   });
 
@@ -124,12 +127,29 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeMemberId, setActiveMemberId] = useState<string>('');
   const [currency, setCurrency] = useState<CurrencyCode>('GHS');
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(isSupabaseConfigured);
 
   const [bankers, setBankers] = useState<Banker[]>(initial.bankers);
   const [members, setMembers] = useState<Member[]>(initial.members);
   const [transactions, setTransactions] = useState<Transaction[]>(initial.transactions);
   const [routes, setRoutes] = useState<Route[]>(initial.routes);
   const [reconciliations, setReconciliations] = useState<ReconciliationRecord[]>(initial.reconciliations);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(initial.auditLogs || []);
+
+  // Helper to add audit log entries
+  const addAuditLog = (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
+    const newLog: AuditLogEntry = {
+      ...entry,
+      id: `AUDIT-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [newLog, ...prev]);
+    supabaseService.insertAuditLog(newLog);
+  };
+
+  const clearAuditLogs = () => {
+    setAuditLogs([]);
+  };
 
   // Sync auth state to local storage
   useEffect(() => {
@@ -152,8 +172,37 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       transactions,
       routes,
       reconciliations,
+      auditLogs,
     });
-  }, [bankers, members, transactions, routes, reconciliations]);
+  }, [bankers, members, transactions, routes, reconciliations, auditLogs]);
+
+  // Initial cloud fetch from Supabase
+  const loadCloudData = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const cloudData = await supabaseService.fetchAllData();
+    if (cloudData) {
+      setIsCloudConnected(true);
+      if (cloudData.bankers.length > 0) setBankers(cloudData.bankers);
+      if (cloudData.routes.length > 0) setRoutes(cloudData.routes);
+      if (cloudData.members.length > 0) setMembers(cloudData.members);
+      if (cloudData.transactions.length > 0) setTransactions(cloudData.transactions);
+      if (cloudData.reconciliations.length > 0) setReconciliations(cloudData.reconciliations);
+      if (cloudData.auditLogs.length > 0) setAuditLogs(cloudData.auditLogs);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCloudData();
+
+    // Subscribe to real-time changes across multiple sessions
+    const unsubscribe = supabaseService.subscribeToChanges(() => {
+      loadCloudData();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [loadCloudData]);
 
   const userRole: UserRole = currentUser?.role || 'admin';
 
@@ -242,6 +291,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
   const getCurrencySymbol = () => {
@@ -307,12 +357,43 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password: data.password || '1234',
     };
     setBankers((prev) => [newBanker, ...prev]);
+    supabaseService.upsertBanker(newBanker);
+
+    // Audit log
+    addAuditLog({
+      action: 'BANKER_CREATED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'banker',
+      targetId: newId,
+      targetName: data.name,
+      description: `New mobile banker account created for ${data.name} (ID: ${newId}) assigned to route "${data.routeName || 'Assigned Zone'}".`,
+      details: {
+        bankerId: newId,
+        name: data.name,
+        phone: data.phone,
+        route: data.routeName,
+        zone: data.zone,
+        dailyTarget: data.dailyTarget,
+      },
+      severity: 'info',
+    });
+
     return newBanker;
   };
 
   // Update Banker
   const updateBanker = (id: string, updates: Partial<Banker>) => {
-    setBankers((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    setBankers((prev) =>
+      prev.map((b) => {
+        if (b.id === id) {
+          const updated = { ...b, ...updates };
+          supabaseService.upsertBanker(updated);
+          return updated;
+        }
+        return b;
+      })
+    );
   };
 
   // Delete Banker
@@ -376,17 +457,20 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setMembers((prev) => [newMember, ...prev]);
+    supabaseService.upsertMember(newMember);
 
     // Update banker member count & collected metric
     if (data.assignedBankerId) {
       setBankers((prev) =>
         prev.map((b) => {
           if (b.id === data.assignedBankerId) {
-            return {
+            const updatedB = {
               ...b,
               assignedMemberCount: (b.assignedMemberCount || 0) + 1,
               collectedToday: initialDeposit > 0 ? b.collectedToday + initialDeposit : b.collectedToday,
             };
+            supabaseService.upsertBanker(updatedB);
+            return updatedB;
           }
           return b;
         })
@@ -415,17 +499,49 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         notes: 'Day 1 initial deposit retained for the Office per Susu policy',
       };
       setTransactions((prev) => [tx, ...prev]);
+      supabaseService.insertTransaction(tx);
     }
+
+    // Audit log member creation
+    addAuditLog({
+      action: 'MEMBER_CREATED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'member',
+      targetId: newId,
+      targetName: data.name,
+      amount: initialDeposit,
+      description: `New saver "${data.name}" registered with daily target ${formatMoney(data.dailyTarget)} on route "${data.routeName || 'Default Route'}"${initialDeposit > 0 ? ` (Initial Day 1 deposit: ${formatMoney(initialDeposit)})` : ''}.`,
+      details: {
+        memberId: newId,
+        phone: data.phone,
+        route: data.routeName,
+        locationStall: data.locationStall,
+        dailyTarget: data.dailyTarget,
+        assignedBanker: data.assignedBankerName,
+        initialDeposit: initialDeposit,
+      },
+      severity: 'info',
+    });
 
     return newMember;
   };
 
   // Update Member
   const updateMember = (id: string, updates: Partial<Member>) => {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
+    setMembers((prev) =>
+      prev.map((m) => {
+        if (m.id === id) {
+          const updated = { ...m, ...updates };
+          supabaseService.upsertMember(updated);
+          return updated;
+        }
+        return m;
+      })
+    );
   };
 
-  // Record Member Deposit (Input by Banker or Back-Office Staff)
+  // Record Member Deposit
   const recordDeposit = ({
     memberId,
     bankerId,
@@ -449,16 +565,14 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const targetDay = dayNumber || Math.min(member.currentCyclePaidDays + 1, member.susuCycleDays);
     const receiptNo = `REC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Business Rule: Is this the very first deposit for the member? (Day 1)
     const isFirstDeposit = member.currentCyclePaidDays === 0 && member.officeFeePaid === 0 && targetDay === 1;
 
     let balanceAddition = amount;
     let officeAddition = 0;
 
     if (isFirstDeposit) {
-      // First deposit is retained for the Office
       officeAddition = amount;
-      balanceAddition = 0; // Day 1 goes to Office fee, future days build withdrawable savings
+      balanceAddition = 0;
     }
 
     const newTx: Transaction = {
@@ -503,7 +617,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           const isCycleReady = updatedPaidDays >= m.susuCycleDays;
 
-          return {
+          const updatedM: Member = {
             ...m,
             totalBalance: m.totalBalance + balanceAddition,
             officeFeePaid: m.officeFeePaid + officeAddition,
@@ -516,6 +630,8 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             todayDepositAmount: (m.todayDepositAmount || 0) + amount,
             stamps: newStamps,
           };
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
         }
         return m;
       })
@@ -525,25 +641,52 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBankers((prev) =>
       prev.map((b) => {
         if (b.id === bankerId) {
-          return {
+          const updatedB: Banker = {
             ...b,
             collectedToday: b.collectedToday + amount,
             status: 'on_route',
             lastActive: 'Just now',
           };
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
         }
         return b;
       })
     );
 
     setTransactions((prev) => [newTx, ...prev]);
+    supabaseService.insertTransaction(newTx);
     setActiveReceipt(newTx);
     triggerCelebration();
+
+    // Audit log deposit
+    addAuditLog({
+      action: 'DEPOSIT_RECORDED',
+      actorName: currentUser?.name || assignedBankerName || 'Field Banker',
+      actorRole: currentUser?.role || 'banker',
+      targetType: 'transaction',
+      targetId: newTx.id,
+      targetName: member.name,
+      amount: amount,
+      description: `Deposit of ${formatMoney(amount)} recorded for ${member.name} (${paymentMethod}) by ${assignedBankerName}${isFirstDeposit ? ' [Day 1 Office Fee Retained]' : ` [Day ${targetDay} contribution]`}.`,
+      details: {
+        receiptNumber: receiptNo,
+        memberId: member.id,
+        memberName: member.name,
+        bankerId: bankerId,
+        bankerName: assignedBankerName,
+        amount: amount,
+        paymentMethod: paymentMethod,
+        dayNumber: targetDay,
+        isFirstDepositOfficeFee: isFirstDeposit,
+      },
+      severity: 'success',
+    });
 
     return newTx;
   };
 
-  // Initiate Member Withdrawal (Anytime: week 1, 31 days, emergency; 0 withdrawal fee; Banker initiates, Admin must approve)
+  // Initiate Member Withdrawal
   const initiateWithdrawal = ({
     memberId,
     bankerId,
@@ -572,10 +715,9 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const assignedBankerName = banker?.name || member.assignedBankerName;
     const receiptNo = `WTH-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const fee = 0; // Strict Business Rule: No withdrawal charges!
+    const fee = 0;
     const netAmount = amount;
 
-    // Rule: Banker can ONLY initiate withdrawal and CANNOT pay right away unless Admin approves!
     const isInitiatedByAdmin = currentUser?.role === 'admin';
     const status = 'PENDING_APPROVAL';
 
@@ -600,42 +742,90 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       notes: notes || `Withdrawal request for ${reason}. (Awaiting Admin Bernard approval)`,
     };
 
-    // Temporarily hold/deduct member balance while pending approval
     setMembers((prev) =>
       prev.map((m) => {
         if (m.id === memberId) {
           const newBal = Math.max(0, m.totalBalance - amount);
-          return {
+          const updatedM: Member = {
             ...m,
             totalBalance: newBal,
             totalWithdrawnAllTime: m.totalWithdrawnAllTime + amount,
           };
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
         }
         return m;
       })
     );
 
     setTransactions((prev) => [newTx, ...prev]);
+    supabaseService.insertTransaction(newTx);
     setActiveReceipt(newTx);
+
+    // Audit log withdrawal request
+    addAuditLog({
+      action: 'WITHDRAWAL_REQUESTED',
+      actorName: currentUser?.name || assignedBankerName || 'Field Banker',
+      actorRole: isInitiatedByAdmin ? 'admin' : 'banker',
+      targetType: 'transaction',
+      targetId: newTx.id,
+      targetName: member.name,
+      amount: amount,
+      description: `Withdrawal request of ${formatMoney(amount)} initiated for ${member.name} (Reason: "${reason}", Payout: ${payoutMode.replace(/_/g, ' ')}). Awaiting admin approval.`,
+      details: {
+        receiptNumber: receiptNo,
+        memberId: member.id,
+        memberName: member.name,
+        amount: amount,
+        reason: reason,
+        payoutMode: payoutMode,
+        paymentMethod: paymentMethod,
+      },
+      severity: 'warning',
+    });
+
     return newTx;
   };
 
-  // Admin Approve Withdrawal in Admin Portal
+  // Admin Approve Withdrawal
   const approveWithdrawal = (transactionId: string, approvedBy = 'Bernard (Super Admin)') => {
+    const tx = transactions.find((t) => t.id === transactionId);
+
     setTransactions((prev) =>
-      prev.map((tx) => {
-        if (tx.id === transactionId) {
-          return {
-            ...tx,
+      prev.map((t) => {
+        if (t.id === transactionId) {
+          const updatedTx: Transaction = {
+            ...t,
             status: 'APPROVED',
             approvedBy: approvedBy,
             approvalDate: new Date().toISOString(),
           };
+          supabaseService.insertTransaction(updatedTx);
+          return updatedTx;
         }
-        return tx;
+        return t;
       })
     );
     triggerCelebration();
+
+    addAuditLog({
+      action: 'WITHDRAWAL_APPROVED',
+      actorName: approvedBy,
+      actorRole: 'admin',
+      targetType: 'transaction',
+      targetId: transactionId,
+      targetName: tx?.memberName || 'Member',
+      amount: tx?.amount,
+      description: `Withdrawal request of ${formatMoney(tx?.amount || 0)} for ${tx?.memberName || 'Member'} approved by ${approvedBy}. Ready for cash/MoMo disbursement.`,
+      details: {
+        transactionId,
+        receiptNumber: tx?.receiptNumber,
+        memberName: tx?.memberName,
+        amount: tx?.amount,
+        payoutMode: tx?.payoutMode,
+      },
+      severity: 'success',
+    });
   };
 
   // Admin Reject Withdrawal
@@ -643,15 +833,16 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx) return;
 
-    // Refund member balance
     setMembers((prev) =>
       prev.map((m) => {
         if (m.id === tx.memberId) {
-          return {
+          const updatedM: Member = {
             ...m,
             totalBalance: m.totalBalance + tx.amount,
             totalWithdrawnAllTime: Math.max(0, m.totalWithdrawnAllTime - tx.amount),
           };
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
         }
         return m;
       })
@@ -660,34 +851,56 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions((prev) =>
       prev.map((t) => {
         if (t.id === transactionId) {
-          return {
+          const updatedTx: Transaction = {
             ...t,
             status: 'REJECTED',
             rejectionReason: reason,
           };
+          supabaseService.insertTransaction(updatedTx);
+          return updatedTx;
         }
         return t;
       })
     );
+
+    addAuditLog({
+      action: 'WITHDRAWAL_REJECTED',
+      actorName: currentUser?.name || 'Bernard (Super Admin)',
+      actorRole: 'admin',
+      targetType: 'transaction',
+      targetId: transactionId,
+      targetName: tx.memberName,
+      amount: tx.amount,
+      description: `Withdrawal request of ${formatMoney(tx.amount)} for ${tx.memberName} rejected. Reason: "${reason}". Savings balance refunded.`,
+      details: {
+        transactionId,
+        receiptNumber: tx.receiptNumber,
+        memberName: tx.memberName,
+        amount: tx.amount,
+        reason: reason,
+      },
+      severity: 'alert',
+    });
   };
 
-  // Disburse Withdrawal (Mark cash handed over by Banker or sent via MoMo after Admin approval)
+  // Disburse Withdrawal
   const disburseWithdrawal = (transactionId: string, disbursedBy?: string) => {
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx) return;
 
     const disburser = disbursedBy || currentUser?.name || 'Field Banker';
 
-    // If banker handed over cash, record in banker's daily withdrawn
     if (tx.payoutMode === 'BANKER_CASH_HANDOVER') {
       setBankers((prev) =>
         prev.map((b) => {
           if (b.id === tx.bankerId) {
-            return {
+            const updatedB: Banker = {
               ...b,
               withdrawnToday: b.withdrawnToday + tx.amount,
               lastActive: 'Just now',
             };
+            supabaseService.upsertBanker(updatedB);
+            return updatedB;
           }
           return b;
         })
@@ -697,18 +910,40 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions((prev) =>
       prev.map((t) => {
         if (t.id === transactionId) {
-          return {
+          const updatedTx: Transaction = {
             ...t,
             status: 'DISBURSED',
             disbursedBy: disburser,
             disbursementDate: new Date().toISOString(),
           };
+          supabaseService.insertTransaction(updatedTx);
+          return updatedTx;
         }
         return t;
       })
     );
 
     triggerCelebration();
+
+    addAuditLog({
+      action: 'WITHDRAWAL_DISBURSED',
+      actorName: disburser,
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'transaction',
+      targetId: transactionId,
+      targetName: tx.memberName,
+      amount: tx.amount,
+      description: `Withdrawal disbursement of ${formatMoney(tx.amount)} completed for ${tx.memberName} via ${tx.payoutMode?.replace(/_/g, ' ') || 'Cash'}.`,
+      details: {
+        transactionId,
+        receiptNumber: tx.receiptNumber,
+        memberName: tx.memberName,
+        amount: tx.amount,
+        disbursedBy: disburser,
+        payoutMode: tx.payoutMode,
+      },
+      severity: 'success',
+    });
   };
 
   // Reconcile Banker EOD Cash Handover
@@ -736,22 +971,47 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setReconciliations((prev) => [record, ...prev]);
+    supabaseService.insertReconciliation(record);
 
-    // Update banker status
     setBankers((prev) =>
       prev.map((b) => {
         if (b.id === bankerId) {
-          return {
+          const updatedB: Banker = {
             ...b,
             status: 'reconciled',
             lastActive: 'Reconciled & Shift Completed',
           };
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
         }
         return b;
       })
     );
 
     triggerCelebration();
+
+    addAuditLog({
+      action: 'RECONCILIATION_SETTLED',
+      actorName: 'Bernard (Super Admin)',
+      actorRole: 'admin',
+      targetType: 'reconciliation',
+      targetId: record.id,
+      targetName: banker.name,
+      amount: cashReceived,
+      description: `End-of-day cash reconciliation completed for ${banker.name}. Collected: ${formatMoney(banker.collectedToday)}, Cash Received: ${formatMoney(cashReceived)}, Discrepancy: ${formatMoney(discrepancy)} (${record.status}).`,
+      details: {
+        reconciliationId: record.id,
+        bankerId: banker.id,
+        bankerName: banker.name,
+        collected: banker.collectedToday,
+        withdrawn: banker.withdrawnToday,
+        cashReceived: cashReceived,
+        discrepancy: discrepancy,
+        status: record.status,
+      },
+      severity: Math.abs(discrepancy) < 0.01 ? 'success' : 'alert',
+    });
+
     return record;
   };
 
@@ -768,6 +1028,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions([]);
     setRoutes([]);
     setReconciliations([]);
+    setAuditLogs([]);
     localStorage.removeItem('bendaz_susu_app_data_v5');
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
@@ -778,6 +1039,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions([]);
     setRoutes([]);
     setReconciliations([]);
+    setAuditLogs([]);
     localStorage.removeItem('bendaz_susu_app_data_v5');
     localStorage.removeItem('bendaz_susu_app_data_v4');
   };
@@ -803,6 +1065,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         transactions,
         routes,
         reconciliations,
+        auditLogs,
         activeBanker,
         activeMember,
         totalCollectedToday,
@@ -812,6 +1075,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         pendingWithdrawalsCount,
         totalSystemSavings,
         totalOfficeRevenue,
+        isCloudConnected,
         addBanker,
         updateBanker,
         deleteBanker,
@@ -823,6 +1087,8 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rejectWithdrawal,
         disburseWithdrawal,
         settleBankerCash,
+        addAuditLog,
+        clearAuditLogs,
         activeReceipt,
         setActiveReceipt,
         printReceipt,

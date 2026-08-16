@@ -1,4 +1,4 @@
-import { Banker, Member, Route, Transaction, ReconciliationRecord } from '../types';
+import { Banker, Member, Route, Transaction, ReconciliationRecord, AuditLogEntry } from '../types';
 
 export const INITIAL_ROUTES: Route[] = [];
 
@@ -9,6 +9,8 @@ export const INITIAL_MEMBERS: Member[] = [];
 export const INITIAL_TRANSACTIONS: Transaction[] = [];
 
 export const INITIAL_RECONCILIATIONS: ReconciliationRecord[] = [];
+
+export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [];
 
 // Local storage key helper
 const STORAGE_KEY = 'bendaz_susu_app_data_v5';
@@ -24,6 +26,7 @@ export const loadStoredData = () => {
         transactions: parsed.transactions || [],
         routes: parsed.routes || [],
         reconciliations: parsed.reconciliations || [],
+        auditLogs: parsed.auditLogs || [],
       };
     }
   } catch (e) {
@@ -35,6 +38,7 @@ export const loadStoredData = () => {
     transactions: [],
     routes: [],
     reconciliations: [],
+    auditLogs: [],
   };
 };
 
@@ -44,6 +48,7 @@ export const saveStoredData = (data: {
   transactions: Transaction[];
   routes: Route[];
   reconciliations: ReconciliationRecord[];
+  auditLogs: AuditLogEntry[];
 }) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -51,3 +56,4 @@ export const saveStoredData = (data: {
     console.error('Failed to save to storage', e);
   }
 };
+

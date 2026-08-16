@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSusu } from '../../context/SusuContext';
 import { Banker, Member, Transaction, Route, TransactionStatus } from '../../types';
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
+import { AuditLog } from './AuditLog';
 import {
   ShieldCheck,
   Users,
@@ -60,6 +61,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     transactions,
     routes,
     reconciliations,
+    auditLogs,
     totalCollectedToday,
     totalWithdrawnToday,
     totalActiveBankers,
@@ -75,7 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     printReceipt,
   } = useSusu();
 
-  const [activeTab, setActiveTab] = useState<'monitor' | 'bankers' | 'withdrawals' | 'members' | 'ledger' | 'routes'>('monitor');
+  const [activeTab, setActiveTab] = useState<'monitor' | 'bankers' | 'withdrawals' | 'members' | 'ledger' | 'routes' | 'audit'>('monitor');
   const [memberSearch, setMemberSearch] = useState('');
   const [selectedRouteFilter, setSelectedRouteFilter] = useState('ALL');
   const [selectedBankerFilter, setSelectedBankerFilter] = useState('ALL');
@@ -378,6 +380,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               { id: 'members', label: 'All Members Directory', icon: Coins, count: members.length },
               { id: 'ledger', label: 'Daily Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
               { id: 'routes', label: 'Market Routes & Zones', icon: MapPin, count: routes.length },
+              { id: 'audit', label: 'Audit Trail & Operations', icon: ShieldCheck, count: auditLogs.length },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -564,6 +567,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Real-time Audit Activity Widget in Monitor Tab */}
+              <div className="pt-2">
+                <AuditLog compact maxCompactItems={5} onViewAll={() => setActiveTab('audit')} />
               </div>
             </div>
           )}
@@ -1539,6 +1547,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* TAB 7: COMPLIANCE & AUDIT LOG */}
+          {activeTab === 'audit' && (
+            <div className="space-y-4">
+              <AuditLog />
             </div>
           )}
         </div>
