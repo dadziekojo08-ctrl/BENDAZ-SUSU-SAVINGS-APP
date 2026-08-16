@@ -17,7 +17,9 @@ import {
 import {
   loadStoredData,
   saveStoredData,
+  DEFAULT_ROUTES,
 } from '../data/mockData';
+import { firebaseService } from '../lib/firebaseService';
 import { supabaseService } from '../lib/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabase';
 
@@ -127,7 +129,9 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeMemberId, setActiveMemberId] = useState<string>('');
   const [currency, setCurrency] = useState<CurrencyCode>('GHS');
   const [activeReceipt, setActiveReceipt] = useState<Transaction | null>(null);
-  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(isSupabaseConfigured);
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(
+    firebaseService.isAvailable() || isSupabaseConfigured
+  );
 
   const [bankers, setBankers] = useState<Banker[]>(initial.bankers);
   const [members, setMembers] = useState<Member[]>(initial.members);
@@ -144,11 +148,13 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       timestamp: new Date().toISOString(),
     };
     setAuditLogs((prev) => [newLog, ...prev]);
+    firebaseService.saveAuditLog(newLog);
     supabaseService.insertAuditLog(newLog);
   };
 
   const clearAuditLogs = () => {
     setAuditLogs([]);
+    firebaseService.clearAuditLogs();
   };
 
   // Sync auth state to local storage
@@ -176,74 +182,159 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [bankers, members, transactions, routes, reconciliations, auditLogs]);
 
-  // Initial cloud fetch from Supabase (merges non-destructively)
+  // Fetch data from Firestore / Supabase on startup
   const loadCloudData = useCallback(async () => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const cloudData = await supabaseService.fetchAllData();
-      if (cloudData) {
-        setIsCloudConnected(true);
-        if (cloudData.bankers && cloudData.bankers.length > 0) {
-          setBankers((prev) => {
-            const cloudIds = new Set(cloudData.bankers.map((b) => b.id));
-            const localOnly = prev.filter((b) => !cloudIds.has(b.id));
-            return [...cloudData.bankers, ...localOnly];
-          });
+    // 1. Try Firebase Firestore first
+    if (firebaseService.isAvailable()) {
+      try {
+        const firestoreData = await firebaseService.fetchAllData();
+        if (firestoreData) {
+          setIsCloudConnected(true);
+          
+          if (firestoreData.members && firestoreData.members.length > 0) {
+            setMembers((prev) => {
+              const cloudIds = new Set(firestoreData.members.map((m) => m.id));
+              const localOnly = prev.filter((m) => !cloudIds.has(m.id));
+              const merged = [...firestoreData.members, ...localOnly];
+              return merged;
+            });
+          }
+
+          if (firestoreData.bankers && firestoreData.bankers.length > 0) {
+            setBankers((prev) => {
+              const cloudIds = new Set(firestoreData.bankers.map((b) => b.id));
+              const localOnly = prev.filter((b) => !cloudIds.has(b.id));
+              return [...firestoreData.bankers, ...localOnly];
+            });
+          }
+
+          if (firestoreData.routes && firestoreData.routes.length > 0) {
+            setRoutes((prev) => {
+              const cloudIds = new Set(firestoreData.routes.map((r) => r.id));
+              const localOnly = prev.filter((r) => !cloudIds.has(r.id));
+              return [...firestoreData.routes, ...localOnly];
+            });
+          } else {
+            // Seed default routes to Firestore if empty
+            DEFAULT_ROUTES.forEach((r) => firebaseService.saveRoute(r));
+            setRoutes(DEFAULT_ROUTES);
+          }
+
+          if (firestoreData.transactions && firestoreData.transactions.length > 0) {
+            setTransactions((prev) => {
+              const cloudIds = new Set(firestoreData.transactions.map((t) => t.id));
+              const localOnly = prev.filter((t) => !cloudIds.has(t.id));
+              return [...firestoreData.transactions, ...localOnly];
+            });
+          }
+
+          if (firestoreData.reconciliations && firestoreData.reconciliations.length > 0) {
+            setReconciliations((prev) => {
+              const cloudIds = new Set(firestoreData.reconciliations.map((rc) => rc.id));
+              const localOnly = prev.filter((rc) => !cloudIds.has(rc.id));
+              return [...firestoreData.reconciliations, ...localOnly];
+            });
+          }
+
+          if (firestoreData.auditLogs && firestoreData.auditLogs.length > 0) {
+            setAuditLogs((prev) => {
+              const cloudIds = new Set(firestoreData.auditLogs.map((a) => a.id));
+              const localOnly = prev.filter((a) => !cloudIds.has(a.id));
+              return [...firestoreData.auditLogs, ...localOnly];
+            });
+          }
         }
-        if (cloudData.routes && cloudData.routes.length > 0) {
-          setRoutes((prev) => {
-            const cloudIds = new Set(cloudData.routes.map((r) => r.id));
-            const localOnly = prev.filter((r) => !cloudIds.has(r.id));
-            return [...cloudData.routes, ...localOnly];
-          });
-        }
-        if (cloudData.members && cloudData.members.length > 0) {
-          setMembers((prev) => {
-            const cloudIds = new Set(cloudData.members.map((m) => m.id));
-            const localOnly = prev.filter((m) => !cloudIds.has(m.id));
-            return [...cloudData.members, ...localOnly];
-          });
-        }
-        if (cloudData.transactions && cloudData.transactions.length > 0) {
-          setTransactions((prev) => {
-            const cloudIds = new Set(cloudData.transactions.map((t) => t.id));
-            const localOnly = prev.filter((t) => !cloudIds.has(t.id));
-            return [...cloudData.transactions, ...localOnly];
-          });
-        }
-        if (cloudData.reconciliations && cloudData.reconciliations.length > 0) {
-          setReconciliations((prev) => {
-            const cloudIds = new Set(cloudData.reconciliations.map((rc) => rc.id));
-            const localOnly = prev.filter((rc) => !cloudIds.has(rc.id));
-            return [...cloudData.reconciliations, ...localOnly];
-          });
-        }
-        if (cloudData.auditLogs && cloudData.auditLogs.length > 0) {
-          setAuditLogs((prev) => {
-            const cloudIds = new Set(cloudData.auditLogs.map((a) => a.id));
-            const localOnly = prev.filter((a) => !cloudIds.has(a.id));
-            return [...cloudData.auditLogs, ...localOnly];
-          });
-        }
+      } catch (e) {
+        console.warn('Firestore initial fetch skipped or failed:', e);
       }
-    } catch (e) {
-      console.warn('Cloud sync skipped:', e);
+    }
+
+    // 2. Fallback or parallel Supabase
+    if (isSupabaseConfigured) {
+      try {
+        const cloudData = await supabaseService.fetchAllData();
+        if (cloudData) {
+          setIsCloudConnected(true);
+          if (cloudData.bankers && cloudData.bankers.length > 0) {
+            setBankers((prev) => {
+              const cloudIds = new Set(cloudData.bankers.map((b) => b.id));
+              const localOnly = prev.filter((b) => !cloudIds.has(b.id));
+              return [...cloudData.bankers, ...localOnly];
+            });
+          }
+          if (cloudData.members && cloudData.members.length > 0) {
+            setMembers((prev) => {
+              const cloudIds = new Set(cloudData.members.map((m) => m.id));
+              const localOnly = prev.filter((m) => !cloudIds.has(m.id));
+              return [...cloudData.members, ...localOnly];
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Supabase sync skipped:', e);
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      loadCloudData();
+    loadCloudData();
 
-      // Subscribe to real-time changes across multiple sessions
-      const unsubscribe = supabaseService.subscribeToChanges(() => {
+    // Subscribe to real-time changes across Firestore and Supabase
+    let unsubFirestore: (() => void) | undefined;
+    if (firebaseService.isAvailable()) {
+      unsubFirestore = firebaseService.subscribeToUpdates({
+        onMembers: (remoteMembers) => {
+          if (remoteMembers.length > 0) {
+            setMembers((prev) => {
+              const remoteIds = new Set(remoteMembers.map((m) => m.id));
+              const localOnly = prev.filter((m) => !remoteIds.has(m.id));
+              return [...remoteMembers, ...localOnly];
+            });
+          }
+        },
+        onBankers: (remoteBankers) => {
+          if (remoteBankers.length > 0) {
+            setBankers((prev) => {
+              const remoteIds = new Set(remoteBankers.map((b) => b.id));
+              const localOnly = prev.filter((b) => !remoteIds.has(b.id));
+              return [...remoteBankers, ...localOnly];
+            });
+          }
+        },
+        onTransactions: (remoteTxs) => {
+          if (remoteTxs.length > 0) {
+            setTransactions(remoteTxs);
+          }
+        },
+        onRoutes: (remoteRoutes) => {
+          if (remoteRoutes.length > 0) {
+            setRoutes(remoteRoutes);
+          }
+        },
+        onReconciliations: (remoteRecs) => {
+          if (remoteRecs.length > 0) {
+            setReconciliations(remoteRecs);
+          }
+        },
+        onAuditLogs: (remoteLogs) => {
+          if (remoteLogs.length > 0) {
+            setAuditLogs(remoteLogs);
+          }
+        },
+      });
+    }
+
+    let unsubSupabase: (() => void) | undefined;
+    if (isSupabaseConfigured) {
+      unsubSupabase = supabaseService.subscribeToChanges(() => {
         loadCloudData();
       });
-
-      return () => {
-        unsubscribe();
-      };
     }
+
+    return () => {
+      if (unsubFirestore) unsubFirestore();
+      if (unsubSupabase) unsubSupabase();
+    };
   }, [loadCloudData]);
 
   const userRole: UserRole = currentUser?.role || 'admin';
@@ -408,6 +499,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       reconciliations,
       auditLogs,
     });
+    firebaseService.saveBanker(newBanker);
     supabaseService.upsertBanker(newBanker);
 
     // Audit log
@@ -439,6 +531,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedList = prev.map((b) => {
         if (b.id === id) {
           const updated = { ...b, ...updates };
+          firebaseService.saveBanker(updated);
           supabaseService.upsertBanker(updated);
           return updated;
         }
@@ -458,6 +551,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Delete Banker
   const deleteBanker = (id: string) => {
+    firebaseService.deleteBanker(id);
     setBankers((prev) => {
       const updatedList = prev.filter((b) => b.id !== id);
       saveStoredData({
@@ -538,6 +632,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             assignedMemberCount: (b.assignedMemberCount || 0) + 1,
             collectedToday: initialDeposit > 0 ? b.collectedToday + initialDeposit : b.collectedToday,
           };
+          firebaseService.saveBanker(updatedB);
           supabaseService.upsertBanker(updatedB);
           return updatedB;
         }
@@ -571,11 +666,13 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       updatedTransactions = [tx, ...transactions];
       setTransactions(updatedTransactions);
+      firebaseService.saveTransaction(tx);
       supabaseService.insertTransaction(tx);
     }
 
     const updatedMembers = [newMember, ...members];
     setMembers(updatedMembers);
+    firebaseService.saveMember(newMember);
     supabaseService.upsertMember(newMember);
 
     // Save immediately and synchronously to local storage
@@ -620,6 +717,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedList = prev.map((m) => {
         if (m.id === id) {
           const updated = { ...m, ...updates };
+          firebaseService.saveMember(updated);
           supabaseService.upsertMember(updated);
           return updated;
         }
@@ -726,6 +824,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             todayDepositAmount: (m.todayDepositAmount || 0) + amount,
             stamps: newStamps,
           };
+          firebaseService.saveMember(updatedM);
           supabaseService.upsertMember(updatedM);
           return updatedM;
         }
@@ -743,6 +842,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'on_route',
             lastActive: 'Just now',
           };
+          firebaseService.saveBanker(updatedB);
           supabaseService.upsertBanker(updatedB);
           return updatedB;
         }
@@ -751,6 +851,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     setTransactions((prev) => [newTx, ...prev]);
+    firebaseService.saveTransaction(newTx);
     supabaseService.insertTransaction(newTx);
     setActiveReceipt(newTx);
     triggerCelebration();
@@ -847,6 +948,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             totalBalance: newBal,
             totalWithdrawnAllTime: m.totalWithdrawnAllTime + amount,
           };
+          firebaseService.saveMember(updatedM);
           supabaseService.upsertMember(updatedM);
           return updatedM;
         }
@@ -855,6 +957,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     setTransactions((prev) => [newTx, ...prev]);
+    firebaseService.saveTransaction(newTx);
     supabaseService.insertTransaction(newTx);
     setActiveReceipt(newTx);
 
@@ -896,6 +999,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             approvedBy: approvedBy,
             approvalDate: new Date().toISOString(),
           };
+          firebaseService.saveTransaction(updatedTx);
           supabaseService.insertTransaction(updatedTx);
           return updatedTx;
         }
@@ -937,6 +1041,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             totalBalance: m.totalBalance + tx.amount,
             totalWithdrawnAllTime: Math.max(0, m.totalWithdrawnAllTime - tx.amount),
           };
+          firebaseService.saveMember(updatedM);
           supabaseService.upsertMember(updatedM);
           return updatedM;
         }
@@ -952,6 +1057,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'REJECTED',
             rejectionReason: reason,
           };
+          firebaseService.saveTransaction(updatedTx);
           supabaseService.insertTransaction(updatedTx);
           return updatedTx;
         }
@@ -995,6 +1101,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
               withdrawnToday: b.withdrawnToday + tx.amount,
               lastActive: 'Just now',
             };
+            firebaseService.saveBanker(updatedB);
             supabaseService.upsertBanker(updatedB);
             return updatedB;
           }
@@ -1012,6 +1119,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             disbursedBy: disburser,
             disbursementDate: new Date().toISOString(),
           };
+          firebaseService.saveTransaction(updatedTx);
           supabaseService.insertTransaction(updatedTx);
           return updatedTx;
         }
@@ -1067,6 +1175,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     setReconciliations((prev) => [record, ...prev]);
+    firebaseService.saveReconciliation(record);
     supabaseService.insertReconciliation(record);
 
     setBankers((prev) =>
@@ -1077,6 +1186,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: 'reconciled',
             lastActive: 'Reconciled & Shift Completed',
           };
+          firebaseService.saveBanker(updatedB);
           supabaseService.upsertBanker(updatedB);
           return updatedB;
         }

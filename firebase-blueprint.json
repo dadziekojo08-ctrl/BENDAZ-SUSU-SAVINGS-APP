@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "banker": {
+      "title": "Banker",
+      "description": "Mobile Susu banker / field agent collecting daily member deposits",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "routeId": { "type": "string" },
+        "routeName": { "type": "string" },
+        "zone": { "type": "string" },
+        "dailyTarget": { "type": "number" },
+        "collectedToday": { "type": "number" },
+        "withdrawnToday": { "type": "number" },
+        "assignedMemberCount": { "type": "number" },
+        "commissionRate": { "type": "number" },
+        "commissionModel": { "type": "string" },
+        "status": { "type": "string" },
+        "joinedDate": { "type": "string" },
+        "lastActive": { "type": "string" },
+        "notes": { "type": "string" },
+        "password": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "routeId", "status"]
+    },
+    "member": {
+      "title": "Member",
+      "description": "Susu member saving daily contributions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "avatar": { "type": "string" },
+        "assignedBankerId": { "type": "string" },
+        "assignedBankerName": { "type": "string" },
+        "routeId": { "type": "string" },
+        "routeName": { "type": "string" },
+        "locationStall": { "type": "string" },
+        "dailyTarget": { "type": "number" },
+        "totalBalance": { "type": "number" },
+        "officeFeePaid": { "type": "number" },
+        "totalSavingsAllTime": { "type": "number" },
+        "totalWithdrawnAllTime": { "type": "number" },
+        "susuCycleDays": { "type": "number" },
+        "currentCyclePaidDays": { "type": "number" },
+        "status": { "type": "string" },
+        "joinedDate": { "type": "string" },
+        "visitedToday": { "type": "boolean" },
+        "depositedToday": { "type": "boolean" },
+        "todayDepositAmount": { "type": "number" }
+      },
+      "required": ["id", "name", "phone", "dailyTarget", "totalBalance", "status"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "Deposit, withdrawal, or fee allocation transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "receiptNumber": { "type": "string" },
+        "type": { "type": "string" },
+        "memberId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "memberPhone": { "type": "string" },
+        "bankerId": { "type": "string" },
+        "bankerName": { "type": "string" },
+        "amount": { "type": "number" },
+        "fee": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "receiptNumber", "type", "memberId", "amount", "status", "timestamp"]
+    },
+    "route": {
+      "title": "Route",
+      "description": "Collection route / market cluster",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "zone": { "type": "string" },
+        "description": { "type": "string" },
+        "bankerId": { "type": "string" },
+        "bankerName": { "type": "string" },
+        "totalMembers": { "type": "number" },
+        "dailyEstimatedTarget": { "type": "number" },
+        "stopsCount": { "type": "number" }
+      },
+      "required": ["id", "name", "zone"]
+    },
+    "reconciliation": {
+      "title": "Reconciliation",
+      "description": "End-of-day banker cash and voucher settlement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "bankerId": { "type": "string" },
+        "bankerName": { "type": "string" },
+        "totalCollected": { "type": "number" },
+        "totalDisbursed": { "type": "number" },
+        "netCashDue": { "type": "number" },
+        "cashReceivedByAdmin": { "type": "number" },
+        "discrepancy": { "type": "number" },
+        "status": { "type": "string" },
+        "verifiedBy": { "type": "string" },
+        "settlementTime": { "type": "string" }
+      },
+      "required": ["id", "date", "bankerId", "totalCollected", "status"]
+    },
+    "auditLog": {
+      "title": "AuditLog",
+      "description": "Immutable activity audit trail for administrative tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "action": { "type": "string" },
+        "actorName": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "description": { "type": "string" },
+        "severity": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "action", "actorName", "description", "severity"]
+    }
+  },
+  "firestore": {
+    "/bankers/{bankerId}": {
+      "schema": "#/entities/banker",
+      "description": "Banker profile and daily collection stats"
+    },
+    "/members/{memberId}": {
+      "schema": "#/entities/member",
+      "description": "Registered saver accounts and cycle records"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "#/entities/transaction",
+      "description": "Individual deposit and payout records"
+    },
+    "/routes/{routeId}": {
+      "schema": "#/entities/route",
+      "description": "Market collection route zones"
+    },
+    "/reconciliations/{reconciliationId}": {
+      "schema": "#/entities/reconciliation",
+      "description": "Daily balancing and cashier settlements"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "#/entities/auditLog",
+      "description": "System event audit entries"
+    }
+  }
+}

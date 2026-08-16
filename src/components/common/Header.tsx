@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 font-medium text-emerald-400">
               <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-              BENDAZ SUSU LIVE • SUPABASE POSTGRESQL CONNECTED
+              BENDAZ SUSU LIVE • FIRESTORE CLOUD DATABASE CONNECTED
             </span>
             <span className="hidden sm:inline text-slate-700">|</span>
             <span className="hidden sm:inline text-slate-300">
