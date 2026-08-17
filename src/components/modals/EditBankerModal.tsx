@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useSusu } from '../../context/SusuContext';
+import { Banker } from '../../types';
 import {
   X,
-  UserPlus,
+  UserCheck,
   User,
   Phone,
   Mail,
@@ -13,43 +14,53 @@ import {
   KeyRound,
   CheckCircle2,
   AlertCircle,
-  ShieldCheck,
+  Shield,
+  Activity,
 } from 'lucide-react';
 
-interface CreateBankerModalProps {
+interface EditBankerModalProps {
+  banker: Banker | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, onClose }) => {
-  const { addBanker, routes } = useSusu();
+export const EditBankerModal: React.FC<EditBankerModalProps> = ({ banker, isOpen, onClose }) => {
+  const { updateBanker, routes, addAuditLog, currentUser } = useSusu();
 
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [hasManuallyEditedUsername, setHasManuallyEditedUsername] = useState(false);
-  const [password, setPassword] = useState('1234');
+  const [name, setName] = useState(banker?.name || '');
+  const [username, setUsername] = useState(banker?.username || banker?.name?.toLowerCase().replace(/\s+/g, '.') || '');
+  const [password, setPassword] = useState(banker?.password || '1234');
   const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [routeId, setRouteId] = useState(routes[0]?.id || '');
-  const [commissionRate, setCommissionRate] = useState(3.3);
-  const [commissionModel, setCommissionModel] = useState<'ONE_DAY_CONTRIBUTION' | 'PERCENTAGE'>('ONE_DAY_CONTRIBUTION');
-  const [notes, setNotes] = useState('');
+  const [phone, setPhone] = useState(banker?.phone || '');
+  const [email, setEmail] = useState(banker?.email || '');
+  const [routeId, setRouteId] = useState(banker?.routeId || '');
+  const [commissionRate, setCommissionRate] = useState(banker?.commissionRate || 3.3);
+  const [commissionModel, setCommissionModel] = useState<'ONE_DAY_CONTRIBUTION' | 'PERCENTAGE' | 'FLAT_FEE'>(
+    banker?.commissionModel || 'ONE_DAY_CONTRIBUTION'
+  );
+  const [status, setStatus] = useState<'active' | 'on_route' | 'reconciled' | 'inactive'>(
+    banker?.status || 'active'
+  );
+  const [notes, setNotes] = useState(banker?.notes || '');
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
-
-  const handleNameChange = (val: string) => {
-    setName(val);
-    if (!hasManuallyEditedUsername) {
-      const slug = val
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '.')
-        .replace(/\.+/g, '.')
-        .replace(/^\.|\.$/g, '');
-      setUsername(slug);
+  // Update local state when banker changes
+  React.useEffect(() => {
+    if (banker) {
+      setName(banker.name);
+      setUsername(banker.username || banker.id.toLowerCase());
+      setPassword(banker.password || '1234');
+      setPhone(banker.phone);
+      setEmail(banker.email);
+      setRouteId(banker.routeId);
+      setCommissionRate(banker.commissionRate || 3.3);
+      setCommissionModel(banker.commissionModel || 'ONE_DAY_CONTRIBUTION');
+      setStatus(banker.status);
+      setNotes(banker.notes || '');
     }
-  };
+  }, [banker]);
+
+  if (!isOpen || !banker) return null;
 
   const handleGeneratePassword = () => {
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
@@ -81,24 +92,40 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
     const selectedRoute = routes.find((r) => r.id === routeId);
 
     try {
-      addBanker({
+      updateBanker(banker.id, {
         name: name.trim(),
         username: username.trim().toLowerCase(),
         password: password.trim(),
         phone: phone.trim(),
-        email: email.trim() || `${username.trim().toLowerCase()}@bendaz.com`,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+        email: email.trim(),
         routeId: routeId,
-        routeName: selectedRoute?.name || 'General Market Route',
-        zone: '',
-        dailyTarget: 0,
+        routeName: selectedRoute ? selectedRoute.name : routeId ? banker.routeName : 'General Collection',
         commissionRate: Number(commissionRate),
         commissionModel: commissionModel,
-        notes: notes || 'Registered mobile banker collector',
+        status: status,
+        notes: notes.trim(),
       });
+
+      addAuditLog({
+        action: 'BANKER_UPDATED',
+        actorName: currentUser?.name || 'Administrator',
+        actorRole: currentUser?.role || 'admin',
+        targetType: 'banker',
+        targetId: banker.id,
+        targetName: name.trim(),
+        description: `Banker profile & credentials updated for ${name.trim()} (Username: @${username.trim().toLowerCase()}).`,
+        details: {
+          bankerId: banker.id,
+          username: username.trim().toLowerCase(),
+          route: selectedRoute?.name || 'General Collection',
+          status,
+        },
+        severity: 'info',
+      });
+
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to create banker account');
+      setError(err.message || 'Failed to update banker account');
     }
   };
 
@@ -109,11 +136,11 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
         <div className="bg-[#383B2B] px-6 py-4 text-white flex items-center justify-between border-b border-[#4A4D3A]">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#8E9775]/20 border border-[#8E9775]/40 flex items-center justify-center">
-              <UserPlus className="w-5 h-5 text-[#8E9775]" />
+              <UserCheck className="w-5 h-5 text-[#8E9775]" />
             </div>
             <div>
-              <h2 className="font-serif-brand font-bold text-lg text-[#F9F8F4]">Create Banker Account</h2>
-              <p className="text-xs text-[#D8D5C8]">Set login credentials & assign field route</p>
+              <h2 className="font-serif-brand font-bold text-lg text-[#F9F8F4]">Edit Banker & Credentials</h2>
+              <p className="text-xs text-[#D8D5C8]">Manage {banker.name} ({banker.id})</p>
             </div>
           </div>
           <button
@@ -145,7 +172,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
                 required
                 placeholder="e.g. Seth Mensah Tagoe"
                 value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
               />
             </div>
@@ -156,10 +183,10 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#383B2B]">
                 <KeyRound className="w-3.5 h-3.5 text-[#5A5E46]" />
-                <span>Banker Login Credentials</span>
+                <span>Field Banker Login Credentials</span>
               </div>
               <span className="text-[10px] text-[#7A7A65] bg-white px-2 py-0.5 rounded-md border border-[#D8D5C8]">
-                Used for Mobile App Login
+                Terminal Access
               </span>
             </div>
 
@@ -175,10 +202,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
                     required
                     placeholder="seth.tagoe"
                     value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''));
-                      setHasManuallyEditedUsername(true);
-                    }}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
                     className="w-full pl-8 pr-3 py-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#383B2B]"
                   />
                 </div>
@@ -195,7 +219,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
                     className="text-[10px] text-[#5A5E46] hover:text-[#383B2B] font-bold flex items-center gap-0.5 cursor-pointer"
                   >
                     <Sparkles className="w-2.5 h-2.5" />
-                    Auto PIN
+                    Reset PIN
                   </button>
                 </div>
                 <div className="relative">
@@ -203,7 +227,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="e.g. 1234 or securepass"
+                    placeholder="e.g. 1234"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-8 pr-9 py-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#383B2B]"
@@ -220,7 +244,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
               </div>
             </div>
             <p className="text-[10px] text-[#7A7A65]">
-              The banker will use username <strong>@{username || 'username'}</strong> and password <strong>{showPassword ? password : '••••'}</strong> to log into their field collection terminal.
+              Banker can authenticate via username <strong>@{username || 'username'}</strong> or Banker ID <strong>{banker.id}</strong>.
             </p>
           </div>
 
@@ -259,7 +283,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          {/* Route Assignment & Commission */}
+          {/* Route & Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
@@ -281,15 +305,17 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
 
             <div>
               <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
-                Commission Structure
+                Account Status
               </label>
               <select
-                value={commissionModel}
-                onChange={(e) => setCommissionModel(e.target.value as any)}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
                 className="w-full p-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
               >
-                <option value="ONE_DAY_CONTRIBUTION">1-Day Susu Card Fee (Standard)</option>
-                <option value="PERCENTAGE">Fixed 3.3% Commission</option>
+                <option value="active">Active (On Duty)</option>
+                <option value="on_route">On Route Collecting</option>
+                <option value="reconciled">Reconciled / Shift Closed</option>
+                <option value="inactive">Inactive / Suspended</option>
               </select>
             </div>
           </div>
@@ -322,7 +348,7 @@ export const CreateBankerModal: React.FC<CreateBankerModalProps> = ({ isOpen, on
               className="px-6 py-2.5 rounded-xl bg-[#5A5E46] hover:bg-[#484B37] text-white text-xs font-bold flex items-center gap-2 shadow-md transition-transform active:scale-95 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Create Banker Account</span>
+              <span>Save Changes</span>
             </button>
           </div>
         </form>

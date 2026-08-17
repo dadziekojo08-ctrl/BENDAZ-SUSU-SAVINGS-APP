@@ -24,6 +24,7 @@ export interface SusuStamp {
 export interface Banker {
   id: string;
   name: string;
+  username?: string;
   phone: string;
   email: string;
   avatar: string;
@@ -144,7 +145,15 @@ export type AuditActionType =
   | 'WITHDRAWAL_REJECTED'
   | 'WITHDRAWAL_DISBURSED'
   | 'BANKER_CREATED'
-  | 'RECONCILIATION_SETTLED';
+  | 'BANKER_UPDATED'
+  | 'BANKER_DELETED'
+  | 'TRANSACTION_EDITED'
+  | 'TRANSACTION_DELETED'
+  | 'DOUBLE_ENTRY_REMOVED'
+  | 'RECONCILIATION_SETTLED'
+  | 'ROUTE_CREATED'
+  | 'ROUTE_DELETED'
+  | 'ROUTES_CLEARED';
 
 export type AuditSeverity = 'info' | 'success' | 'warning' | 'alert';
 
@@ -154,7 +163,7 @@ export interface AuditLogEntry {
   action: AuditActionType;
   actorName: string;
   actorRole: 'admin' | 'banker' | 'system';
-  targetType: 'member' | 'banker' | 'transaction' | 'reconciliation';
+  targetType: 'member' | 'banker' | 'transaction' | 'reconciliation' | 'route';
   targetId: string;
   targetName?: string;
   amount?: number;

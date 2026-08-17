@@ -171,7 +171,7 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
               </h1>
               <p className="text-xs text-[#D8D5C8] flex items-center gap-1.5 mt-0.5">
                 <MapPin className="w-3.5 h-3.5 text-[#8E9775]" />
-                <span>{activeBanker.routeName}</span>
+                <span>{activeBanker.routeName || 'General Market Collection'}</span>
               </p>
             </div>
           </div>

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSusu } from '../../context/SusuContext';
 import { Banker, Member, Transaction, Route, TransactionStatus } from '../../types';
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
 import { AuditLog } from './AuditLog';
+import { EditBankerModal } from '../modals/EditBankerModal';
+import { EditTransactionModal } from '../modals/EditTransactionModal';
+import { DeleteTransactionModal } from '../modals/DeleteTransactionModal';
 import {
   ShieldCheck,
   Users,
@@ -36,6 +39,10 @@ import {
   User,
   ArrowUpDown,
   SlidersHorizontal,
+  Trash2,
+  Edit3,
+  KeyRound,
+  Lock,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -75,6 +82,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     disburseWithdrawal,
     setActiveReceipt,
     printReceipt,
+    deleteRoute,
+    clearAllRoutes,
+    addRoute,
   } = useSusu();
 
   const [activeTab, setActiveTab] = useState<'monitor' | 'bankers' | 'withdrawals' | 'members' | 'ledger' | 'routes' | 'audit'>('monitor');
@@ -85,12 +95,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [memberSortBy, setMemberSortBy] = useState<'name_asc' | 'name_desc' | 'balance_desc' | 'balance_asc' | 'cycle_desc'>('name_asc');
   const [withdrawalStatusFilter, setWithdrawalStatusFilter] = useState<'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'DISBURSED' | 'REJECTED'>('ALL');
   const [withdrawalSearchQuery, setWithdrawalSearchQuery] = useState('');
-  const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'ALL' | 'DEPOSIT' | 'WITHDRAWAL' | 'PENDING' | 'DISBURSED'>('ALL');
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'ALL' | 'DEPOSIT' | 'WITHDRAWAL' | 'PENDING' | 'DISBURSED' | 'DUPLICATES'>('ALL');
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
   const [rejectionModalTx, setRejectionModalTx] = useState<Transaction | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Modals for Banker & Transaction adjustments
+  const [editingBanker, setEditingBanker] = useState<Banker | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  
+  // Route / Zone state
+  const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
+  const [newRouteName, setNewRouteName] = useState('');
+  const [newRouteZone, setNewRouteZone] = useState('');
+  const [newRouteDescription, setNewRouteDescription] = useState('');
+  const [newRouteDailyTarget, setNewRouteDailyTarget] = useState(5000);
+  const [routeToDelete, setRouteToDelete] = useState<Route | null>(null);
+  const [showClearRoutesConfirm, setShowClearRoutesConfirm] = useState(false);
 
   const netVaultCashInHand = Math.max(0, totalCollectedToday - totalWithdrawnToday);
+
+  // Identify duplicate deposits / double entries (same member on same day or duplicate stamp)
+  const duplicateTxIds = useMemo(() => {
+    const duplicateIds = new Set<string>();
+    const deposits = transactions.filter((t) => t.type === 'DEPOSIT');
+    
+    // Check by memberId + date string
+    const dateMap = new Map<string, Transaction[]>();
+    // Check by memberId + susuDayNumber
+    const stampMap = new Map<string, Transaction[]>();
+
+    deposits.forEach((tx) => {
+      const dateStr = tx.timestamp.split('T')[0];
+      const dateKey = `${tx.memberId}_${dateStr}`;
+      if (!dateMap.has(dateKey)) dateMap.set(dateKey, []);
+      dateMap.get(dateKey)!.push(tx);
+
+      if (tx.susuDayNumber) {
+        const stampKey = `${tx.memberId}_day_${tx.susuDayNumber}`;
+        if (!stampMap.has(stampKey)) stampMap.set(stampKey, []);
+        stampMap.get(stampKey)!.push(tx);
+      }
+    });
+
+    dateMap.forEach((list) => {
+      if (list.length > 1) {
+        list.forEach((t) => duplicateIds.add(t.id));
+      }
+    });
+
+    stampMap.forEach((list) => {
+      if (list.length > 1) {
+        list.forEach((t) => duplicateIds.add(t.id));
+      }
+    });
+
+    return duplicateIds;
+  }, [transactions]);
 
   // Withdrawal requests & stats
   const allWithdrawalRequests = transactions.filter((t) => t.type === 'WITHDRAWAL');
@@ -138,6 +200,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         ? t.status === 'PENDING_APPROVAL'
         : ledgerTypeFilter === 'DISBURSED'
         ? t.status === 'DISBURSED' || t.status === 'COMPLETED'
+        : ledgerTypeFilter === 'DUPLICATES'
+        ? duplicateTxIds.has(t.id)
         : true;
 
     const query = ledgerSearchQuery.toLowerCase().trim();
@@ -198,6 +262,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setRejectionModalTx(null);
       setRejectionReason('');
     }
+  };
+
+  const handleCreateRoute = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRouteName.trim()) return;
+    addRoute({
+      name: newRouteName.trim(),
+      zone: newRouteZone.trim() || 'General Territory',
+      description: newRouteDescription.trim() || 'Market collection route',
+      bankerId: '',
+      bankerName: 'Unassigned',
+      dailyEstimatedTarget: Number(newRouteDailyTarget) || 0,
+      stopsCount: 0,
+    });
+    setNewRouteName('');
+    setNewRouteZone('');
+    setNewRouteDescription('');
+    setNewRouteDailyTarget(5000);
+    setIsAddRouteOpen(false);
+  };
+
+  const handleConfirmDeleteRoute = () => {
+    if (routeToDelete) {
+      deleteRoute(routeToDelete.id);
+      setRouteToDelete(null);
+    }
+  };
+
+  const handleConfirmClearRoutes = () => {
+    clearAllRoutes();
+    setShowClearRoutesConfirm(false);
   };
 
   const handleExportCSV = () => {
@@ -604,10 +699,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <thead className="bg-[#F9F8F4] text-[#7A7A65] font-bold border-b border-[#EAE7DC] uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-4">Banker / Agent</th>
+                      <th className="py-3 px-4">Login Username</th>
                       <th className="py-3 px-4">Contact</th>
                       <th className="py-3 px-4">Assigned Route</th>
                       <th className="py-3 px-4">Commission Model</th>
-                      <th className="py-3 px-4">Savers Count</th>
+                      <th className="py-3 px-4">Savers</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
@@ -622,6 +718,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <span className="font-bold text-[#3A3D2C] block">{b.name}</span>
                               <span className="font-mono text-[10px] text-[#8A8A70]">{b.id}</span>
                             </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-[#5A5E46] bg-[#8E9775]/20 px-2 py-0.5 rounded-lg border border-[#8E9775]/30">
+                              @{b.username || b.name.toLowerCase().replace(/\s+/g, '.')}
+                            </span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -645,12 +748,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => onOpenReconcile(b.id)}
-                            className="text-xs text-[#C27D50] font-bold hover:underline cursor-pointer"
-                          >
-                            Reconcile Shift
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEditingBanker(b)}
+                              className="px-2.5 py-1 bg-[#5A5E46]/10 hover:bg-[#5A5E46]/20 text-[#5A5E46] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              title="Edit Banker & Reset Login PIN"
+                            >
+                              <KeyRound className="w-3 h-3" />
+                              <span>Edit / PIN</span>
+                            </button>
+                            <button
+                              onClick={() => onOpenReconcile(b.id)}
+                              className="px-2.5 py-1 bg-[#C27D50]/15 hover:bg-[#C27D50]/25 text-[#9A5025] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                            >
+                              Reconcile
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1345,6 +1458,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
+              {/* Potential Duplicate Banner */}
+              {duplicateTxIds.size > 0 && (
+                <div className="p-3.5 bg-[#C27D50]/15 border border-[#C27D50]/35 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <AlertTriangle className="w-5 h-5 text-[#C27D50] shrink-0" />
+                    <div>
+                      <span className="font-bold text-[#8A3E1B]">
+                        Potential Double Deposits Detected ({duplicateTxIds.size} records)
+                      </span>
+                      <p className="text-[11px] text-[#7A4020]">
+                        Multiple contributions logged for the same member on the same day or matching savings cycle stamp.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setLedgerTypeFilter('DUPLICATES')}
+                      className="px-3 py-1.5 bg-[#C27D50] hover:bg-[#A34E36] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      Filter Duplicates ({duplicateTxIds.size})
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Ledger Filters & Search */}
               <div className="bg-[#F9F8F4] p-3 rounded-2xl border border-[#EAE7DC] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1388,6 +1526,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     Pending Approvals ({pendingWithdrawalRequests.length})
                   </button>
+                  {duplicateTxIds.size > 0 && (
+                    <button
+                      onClick={() => setLedgerTypeFilter('DUPLICATES')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        ledgerTypeFilter === 'DUPLICATES'
+                          ? 'bg-[#C27D50] text-white'
+                          : 'bg-[#C27D50]/15 text-[#9A5025] border border-[#C27D50]/30'
+                      }`}
+                    >
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Potential Duplicates ({duplicateTxIds.size})</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="relative sm:w-64">
@@ -1426,60 +1577,104 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      filteredLedgerTransactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-[#F9F8F4] transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-[#3A3D2C]">{tx.receiptNumber}</td>
-                          <td className="py-3 px-4 text-[#7A7A65]">
-                            {new Date(tx.timestamp).toLocaleString('en-GB', {
-                              dateStyle: 'short',
-                              timeStyle: 'short',
-                            })}
-                          </td>
-                          <td className="py-3 px-4">
-                            <TransactionTypeBadge
-                              type={tx.type}
-                              isOfficeFee={tx.isFirstDepositOfficeFee}
-                              size="sm"
-                            />
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-[#3A3D2C]">{tx.memberName}</td>
-                          <td className="py-3 px-4 text-[#6A6A55] font-medium">{tx.bankerName}</td>
-                          <td className="py-3 px-4 text-[#8A8A70] uppercase text-[10px]">
-                            {tx.paymentMethod.replace(/_/g, ' ')}
-                          </td>
-                          <td className="py-3 px-4 font-mono font-bold text-[#3A3D2C]">
-                            <span className={tx.type === 'DEPOSIT' ? 'text-[#15803D]' : 'text-[#C27D50]'}>
-                              {tx.type === 'DEPOSIT' ? '+' : '-'}
-                              {formatMoney(tx.amount)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <WithdrawalStatusBadge
-                              status={tx.status}
-                              size="sm"
-                              showSubtext={false}
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => setActiveReceipt(tx)}
-                                className="p-1.5 text-[#6A6A55] hover:bg-[#EAE7DC] rounded-lg cursor-pointer"
-                                title="View Receipt Voucher"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => printReceipt(tx)}
-                                className="p-1.5 text-[#6A6A55] hover:bg-[#EAE7DC] rounded-lg cursor-pointer"
-                                title="Print Receipt Slip"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      filteredLedgerTransactions.map((tx) => {
+                        const isDuplicate = duplicateTxIds.has(tx.id);
+                        return (
+                          <tr
+                            key={tx.id}
+                            className={`transition-colors ${
+                              isDuplicate
+                                ? 'bg-[#C27D50]/5 hover:bg-[#C27D50]/10'
+                                : 'hover:bg-[#F9F8F4]'
+                            }`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-[#3A3D2C]">
+                                  {tx.receiptNumber}
+                                </span>
+                                {isDuplicate && (
+                                  <span className="px-1.5 py-0.2 bg-[#C27D50]/20 text-[#8A3E1B] rounded text-[10px] font-bold border border-[#C27D50]/30" title="Possible duplicate deposit">
+                                    Double Entry?
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-[#7A7A65]">
+                              {new Date(tx.timestamp).toLocaleString('en-GB', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })}
+                            </td>
+                            <td className="py-3 px-4">
+                              <TransactionTypeBadge
+                                type={tx.type}
+                                isOfficeFee={tx.isFirstDepositOfficeFee}
+                                size="sm"
+                              />
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-[#3A3D2C]">
+                              <div>
+                                <span>{tx.memberName}</span>
+                                {tx.susuDayNumber && (
+                                  <span className="text-[10px] text-[#7A7A65] block font-mono">
+                                    Day #{tx.susuDayNumber} Stamp
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-[#6A6A55] font-medium">{tx.bankerName}</td>
+                            <td className="py-3 px-4 text-[#8A8A70] uppercase text-[10px]">
+                              {tx.paymentMethod.replace(/_/g, ' ')}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-[#3A3D2C]">
+                              <span className={tx.type === 'DEPOSIT' ? 'text-[#15803D]' : 'text-[#C27D50]'}>
+                                {tx.type === 'DEPOSIT' ? '+' : '-'}
+                                {formatMoney(tx.amount)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <WithdrawalStatusBadge
+                                status={tx.status}
+                                size="sm"
+                                showSubtext={false}
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => setEditingTransaction(tx)}
+                                  className="p-1.5 text-[#5A5E46] hover:bg-[#8E9775]/20 rounded-lg cursor-pointer transition-colors"
+                                  title="Edit Ledger Entry (Amount / Channel / Susu Day)"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingTransaction(tx)}
+                                  className="p-1.5 text-[#A34E36] hover:bg-[#C27D50]/20 rounded-lg cursor-pointer transition-colors"
+                                  title="Delete & Reverse Entry (Double Deposit Removal)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setActiveReceipt(tx)}
+                                  className="p-1.5 text-[#6A6A55] hover:bg-[#EAE7DC] rounded-lg cursor-pointer"
+                                  title="View Receipt Voucher"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => printReceipt(tx)}
+                                  className="p-1.5 text-[#6A6A55] hover:bg-[#EAE7DC] rounded-lg cursor-pointer"
+                                  title="Print Receipt Slip"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1490,69 +1685,128 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* TAB 6: ROUTES & ZONES */}
           {activeTab === 'routes' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#F9F8F4] p-4 rounded-2xl border border-[#EAE7DC]">
                 <div>
                   <h3 className="font-serif-brand font-bold text-lg text-[#3A3D2C]">
                     Market Routes & Territory Lines
                   </h3>
                   <p className="text-xs text-[#7A7A65]">
-                    Collection zones, estimated daily target volumes, and assigned bankers.
+                    Collection zones, estimated daily target volumes, and territory assignments.
                   </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {routes.length > 0 && (
+                    <button
+                      onClick={() => setShowClearRoutesConfirm(true)}
+                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Clear All Zones
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsAddRouteOpen(true)}
+                    className="px-3.5 py-2 bg-[#8E9775] hover:bg-[#7D8665] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Market Zone
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {routes.map((route) => {
-                  const assignedBanker = bankers.find((b) => b.id === route.bankerId);
-                  const routeMembers = members.filter((m) => m.routeId === route.id);
-                  const routeTotalSavings = routeMembers.reduce((sum, m) => sum + m.totalBalance, 0);
+              {routes.length === 0 ? (
+                <div className="bg-[#F9F8F4] border border-[#EAE7DC] rounded-2xl p-8 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#8E9775]/20 text-[#5A5E46] flex items-center justify-center mx-auto">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <h4 className="font-serif-brand font-bold text-base text-[#3A3D2C]">
+                    No Market Zones Configured
+                  </h4>
+                  <p className="text-xs text-[#7A7A65] max-w-md mx-auto">
+                    All savers and field bankers currently operate in <strong>General Collection</strong>. You can create custom market zones anytime or leave collection open.
+                  </p>
+                  <button
+                    onClick={() => setIsAddRouteOpen(true)}
+                    className="px-4 py-2 bg-[#8E9775] hover:bg-[#7D8665] text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Create First Market Zone
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {routes.map((route) => {
+                    const assignedBanker = bankers.find((b) => b.id === route.bankerId);
+                    const routeMembers = members.filter((m) => m.routeId === route.id);
+                    const routeTotalSavings = routeMembers.reduce((sum, m) => sum + m.totalBalance, 0);
 
-                  return (
-                    <div
-                      key={route.id}
-                      className="bg-[#F9F8F4] p-5 rounded-2xl border border-[#EAE7DC] space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-xl bg-[#8E9775]/20 text-[#5A5E46] flex items-center justify-center">
-                            <MapPin className="w-5 h-5" />
+                    return (
+                      <div
+                        key={route.id}
+                        className="bg-[#F9F8F4] p-5 rounded-2xl border border-[#EAE7DC] space-y-3 relative group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-xl bg-[#8E9775]/20 text-[#5A5E46] flex items-center justify-center">
+                              <MapPin className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm text-[#3A3D2C]">{route.name}</h4>
+                              {route.zone && (
+                                <span className="text-[11px] text-[#5A5E46] font-semibold">{route.zone}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#EAE7DC] text-[#4A4A40]">
+                              {route.id}
+                            </span>
+                            <button
+                              onClick={() => setRouteToDelete(route)}
+                              title="Delete Market Zone"
+                              className="p-1.5 text-[#8A8A70] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {route.description && (
+                          <p className="text-xs text-[#6A6A55]">{route.description}</p>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-[#EAE7DC] text-center text-xs">
+                          <div>
+                            <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Banker</span>
+                            <span className="font-bold text-[#3A3D2C]">{assignedBanker?.name || 'Unassigned'}</span>
                           </div>
                           <div>
-                            <h4 className="font-bold text-sm text-[#3A3D2C]">{route.name}</h4>
-                            <span className="text-[11px] text-[#5A5E46] font-semibold">{route.zone}</span>
+                            <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Stops / Savers</span>
+                            <span className="font-bold text-[#3A3D2C]">{routeMembers.length} Savers</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Daily Target</span>
+                            <span className="font-bold text-[#5A5E46] font-mono">
+                              {formatMoney(route.dailyEstimatedTarget)}
+                            </span>
                           </div>
                         </div>
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#EAE7DC] text-[#4A4A40]">
-                          {route.id}
-                        </span>
-                      </div>
 
-                      <p className="text-xs text-[#6A6A55]">{route.description}</p>
-
-                      <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-xl border border-[#EAE7DC] text-center text-xs">
-                        <div>
-                          <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Banker</span>
-                          <span className="font-bold text-[#3A3D2C]">{assignedBanker?.name || 'Unassigned'}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Stops / Savers</span>
-                          <span className="font-bold text-[#3A3D2C]">{routeMembers.length} Savers</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-[#8A8A70] uppercase font-semibold block">Daily Target</span>
-                          <span className="font-bold text-[#5A5E46] font-mono">
-                            {formatMoney(route.dailyEstimatedTarget)}
-                          </span>
+                        <div className="pt-2 flex items-center justify-between text-xs text-[#7A7A65]">
+                          <span>Total Route Savings: <strong className="text-[#3A3D2C]">{formatMoney(routeTotalSavings)}</strong></span>
+                          <button
+                            onClick={() => setRouteToDelete(route)}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete Zone
+                          </button>
                         </div>
                       </div>
-
-                      <div className="pt-2 flex items-center justify-between text-xs text-[#7A7A65]">
-                        <span>Total Route Savings: <strong className="text-[#3A3D2C]">{formatMoney(routeTotalSavings)}</strong></span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1598,6 +1852,183 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Add Market Zone Modal */}
+      {isAddRouteOpen && (
+        <div className="fixed inset-0 z-50 bg-[#383B2B]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#F9F8F4] rounded-2xl p-6 max-w-md w-full shadow-2xl border border-[#EAE7DC] space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#8E9775]/20 text-[#5A5E46] flex items-center justify-center">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <h3 className="font-serif-brand font-bold text-base text-[#3A3D2C]">Add Market Zone / Route</h3>
+              </div>
+              <button
+                onClick={() => setIsAddRouteOpen(false)}
+                className="p-1 rounded-lg text-[#7A7A65] hover:bg-[#EAE7DC] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRoute} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
+                  Route / Market Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Makola Market Central"
+                  value={newRouteName}
+                  onChange={(e) => setNewRouteName(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
+                    Zone / Region
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Accra Central"
+                    value={newRouteZone}
+                    onChange={(e) => setNewRouteZone(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
+                    Daily Est. Target ({getCurrencySymbol()})
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={newRouteDailyTarget}
+                    onChange={(e) => setNewRouteDailyTarget(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5A5A40] uppercase tracking-wider mb-1">
+                  Description / Landmarks
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Textile, jewelry, and provision vendors"
+                  value={newRouteDescription}
+                  onChange={(e) => setNewRouteDescription(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#EAE7DC]">
+                <button
+                  type="button"
+                  onClick={() => setIsAddRouteOpen(false)}
+                  className="px-3 py-2 rounded-xl border border-[#D8D5C8] text-[#4A4A40] text-xs font-semibold hover:bg-[#EAE7DC] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#8E9775] hover:bg-[#7D8665] text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                >
+                  Create Market Zone
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Single Route Confirmation Modal */}
+      {routeToDelete && (
+        <div className="fixed inset-0 z-50 bg-[#383B2B]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#F9F8F4] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#EAE7DC] space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <h3 className="font-serif-brand font-bold text-base text-[#3A3D2C]">
+              Delete Market Zone "{routeToDelete.name}"?
+            </h3>
+            <p className="text-xs text-[#7A7A65]">
+              Are you sure you want to delete this zone? Assigned members and field bankers will be safely transferred to <strong>General Collection</strong>.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE7DC]">
+              <button
+                onClick={() => setRouteToDelete(null)}
+                className="px-3 py-2 rounded-xl border border-[#D8D5C8] text-[#4A4A40] text-xs font-semibold hover:bg-[#EAE7DC] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteRoute}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+              >
+                Yes, Delete Zone
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear All Routes Confirmation Modal */}
+      {showClearRoutesConfirm && (
+        <div className="fixed inset-0 z-50 bg-[#383B2B]/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#F9F8F4] rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-[#EAE7DC] space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <h3 className="font-serif-brand font-bold text-base text-[#3A3D2C]">
+              Delete All Market Zones?
+            </h3>
+            <p className="text-xs text-[#7A7A65]">
+              This will remove all {routes.length} collection routes. All savers and collectors will operate in <strong>General Collection</strong>.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#EAE7DC]">
+              <button
+                onClick={() => setShowClearRoutesConfirm(false)}
+                className="px-3 py-2 rounded-xl border border-[#D8D5C8] text-[#4A4A40] text-xs font-semibold hover:bg-[#EAE7DC] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmClearRoutes}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+              >
+                Yes, Delete All Zones
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Banker & Credentials Modal */}
+      <EditBankerModal
+        banker={editingBanker}
+        isOpen={Boolean(editingBanker)}
+        onClose={() => setEditingBanker(null)}
+      />
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        transaction={editingTransaction}
+        isOpen={Boolean(editingTransaction)}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      {/* Delete / Reverse Transaction Modal (Double Entry Remover) */}
+      <DeleteTransactionModal
+        transaction={deletingTransaction}
+        isOpen={Boolean(deletingTransaction)}
+        onClose={() => setDeletingTransaction(null)}
+      />
     </div>
   );
 };

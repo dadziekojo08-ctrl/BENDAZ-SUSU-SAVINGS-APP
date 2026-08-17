@@ -170,6 +170,33 @@ export const firebaseService = {
     }
   },
 
+  // Delete route
+  async deleteRoute(routeId: string): Promise<boolean> {
+    if (!this.isAvailable() || !routeId) return false;
+    try {
+      await deleteDoc(doc(db, 'routes', routeId));
+      return true;
+    } catch (error) {
+      console.error(`Error deleting route ${routeId} from Firestore:`, error);
+      return false;
+    }
+  },
+
+  // Clear all routes
+  async clearAllRoutes(): Promise<boolean> {
+    if (!this.isAvailable()) return false;
+    try {
+      const snap = await getDocs(collection(db, 'routes'));
+      const batch = writeBatch(db);
+      snap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      return true;
+    } catch (error) {
+      console.error('Error clearing routes in Firestore:', error);
+      return false;
+    }
+  },
+
   // Save transaction
   async saveTransaction(transaction: Transaction): Promise<boolean> {
     if (!this.isAvailable() || !transaction?.id) return false;
@@ -179,6 +206,18 @@ export const firebaseService = {
       return true;
     } catch (error) {
       console.error(`Error saving transaction ${transaction.id} to Firestore:`, error);
+      return false;
+    }
+  },
+
+  // Delete transaction
+  async deleteTransaction(transactionId: string): Promise<boolean> {
+    if (!this.isAvailable() || !transactionId) return false;
+    try {
+      await deleteDoc(doc(db, 'transactions', transactionId));
+      return true;
+    } catch (error) {
+      console.error(`Error deleting transaction ${transactionId} from Firestore:`, error);
       return false;
     }
   },

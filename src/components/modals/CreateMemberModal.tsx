@@ -32,7 +32,7 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
   const [locationStall, setLocationStall] = useState('');
   const [initialDeposit, setInitialDeposit] = useState(50);
   const [assignedBankerId, setAssignedBankerId] = useState(defaultBankerId || activeBankerId || bankers[0]?.id || '');
-  const [routeId, setRouteId] = useState(routes[0]?.id || 'RT-01');
+  const [routeId, setRouteId] = useState(routes[0]?.id || '');
   const [error, setError] = useState('');
   const [accountSeed, setAccountSeed] = useState(() => Math.floor(100000 + Math.random() * 900000));
 
@@ -257,9 +257,10 @@ export const CreateMemberModal: React.FC<CreateMemberModalProps> = ({
                 onChange={(e) => setRouteId(e.target.value)}
                 className="w-full p-2 bg-white border border-[#D8D5C8] rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40]"
               >
+                <option value="">General Collection (No Route)</option>
                 {routes.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.name}
+                    {r.name} {r.zone ? `(${r.zone})` : ''}
                   </option>
                 ))}
               </select>

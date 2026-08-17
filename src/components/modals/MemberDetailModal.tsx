@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useSusu } from '../../context/SusuContext';
 import { Member, Transaction } from '../../types';
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
+import { EditTransactionModal } from './EditTransactionModal';
+import { DeleteTransactionModal } from './DeleteTransactionModal';
 import {
   X,
   User,
@@ -19,6 +21,8 @@ import {
   Receipt,
   Stamp,
   Building2,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 
 interface MemberDetailModalProps {
@@ -34,8 +38,10 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   onOpenDeposit,
   onOpenWithdrawal,
 }) => {
-  const { formatMoney, transactions, setActiveReceipt } = useSusu();
+  const { formatMoney, transactions, setActiveReceipt, userRole } = useSusu();
   const [activeTab, setActiveTab] = useState<'card' | 'transactions'>('card');
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
 
   if (!member) return null;
 
@@ -329,13 +335,33 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => setActiveReceipt(tx)}
-                        className="p-1.5 hover:bg-[#EAE7DC] rounded-lg text-[#5A5A40] cursor-pointer"
-                        title="View Official Receipt Voucher"
-                      >
-                        <Receipt className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {userRole === 'ADMIN' && (
+                          <>
+                            <button
+                              onClick={() => setEditingTransaction(tx)}
+                              className="p-1.5 hover:bg-[#8E9775]/20 text-[#5A5E46] rounded-lg cursor-pointer transition-colors"
+                              title="Edit Entry"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingTransaction(tx)}
+                              className="p-1.5 hover:bg-[#C27D50]/20 text-[#A34E36] rounded-lg cursor-pointer transition-colors"
+                              title="Delete & Reverse Entry"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => setActiveReceipt(tx)}
+                          className="p-1.5 hover:bg-[#EAE7DC] rounded-lg text-[#5A5A40] cursor-pointer"
+                          title="View Official Receipt Voucher"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -344,6 +370,19 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Modals for Editing & Deleting entries */}
+      <EditTransactionModal
+        transaction={editingTransaction}
+        isOpen={Boolean(editingTransaction)}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      <DeleteTransactionModal
+        transaction={deletingTransaction}
+        isOpen={Boolean(deletingTransaction)}
+        onClose={() => setDeletingTransaction(null)}
+      />
     </div>
   );
 };

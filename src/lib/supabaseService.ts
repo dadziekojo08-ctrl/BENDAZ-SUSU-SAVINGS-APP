@@ -40,6 +40,7 @@ export const supabaseService = {
       const bankers: Banker[] = (bankersData || []).map((b: any) => ({
         id: b.id,
         name: b.name,
+        username: b.username || '',
         phone: b.phone || '',
         email: b.email || '',
         avatar: b.avatar || '',
@@ -216,6 +217,7 @@ export const supabaseService = {
       await supabase.from('bankers').upsert({
         id: banker.id,
         name: banker.name,
+        username: banker.username,
         phone: banker.phone,
         email: banker.email,
         avatar: banker.avatar,
@@ -260,6 +262,26 @@ export const supabaseService = {
     }
   },
 
+  // Delete Route
+  async deleteRoute(routeId: string) {
+    if (!isSupabaseConfigured) return;
+    try {
+      await supabase.from('routes').delete().eq('id', routeId);
+    } catch (e) {
+      console.error('Supabase delete route error:', e);
+    }
+  },
+
+  // Clear All Routes
+  async clearAllRoutes() {
+    if (!isSupabaseConfigured) return;
+    try {
+      await supabase.from('routes').delete().neq('id', '');
+    } catch (e) {
+      console.error('Supabase clear all routes error:', e);
+    }
+  },
+
   // Insert Transaction
   async insertTransaction(tx: Transaction) {
     if (!isSupabaseConfigured) return;
@@ -293,6 +315,16 @@ export const supabaseService = {
       });
     } catch (e) {
       console.error('Supabase insert transaction error:', e);
+    }
+  },
+
+  // Delete Transaction
+  async deleteTransaction(txId: string) {
+    if (!isSupabaseConfigured || !txId) return;
+    try {
+      await supabase.from('transactions').delete().eq('id', txId);
+    } catch (e) {
+      console.error('Supabase delete transaction error:', e);
     }
   },
 

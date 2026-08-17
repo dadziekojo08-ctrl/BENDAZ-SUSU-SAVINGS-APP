@@ -64,11 +64,17 @@ interface SusuContextType {
   isCloudConnected: boolean;
 
   // Actions
-  addBanker: (banker: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { password?: string }) => Banker;
+  addBanker: (banker: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { username?: string; password?: string }) => Banker;
   updateBanker: (id: string, updates: Partial<Banker>) => void;
   deleteBanker: (id: string) => void;
   addMember: (member: Omit<Member, 'id' | 'totalBalance' | 'officeFeePaid' | 'totalSavingsAllTime' | 'totalWithdrawnAllTime' | 'currentCyclePaidDays' | 'status' | 'joinedDate' | 'visitedToday' | 'depositedToday' | 'stamps'> & { initialDeposit?: number }) => Member;
   updateMember: (id: string, updates: Partial<Member>) => void;
+  
+  // Route / Zone Actions
+  addRoute: (route: Omit<Route, 'id' | 'totalMembers'> & { id?: string }) => Route;
+  updateRoute: (id: string, updates: Partial<Route>) => void;
+  deleteRoute: (id: string) => void;
+  clearAllRoutes: () => void;
   
   recordDeposit: (params: {
     memberId: string;
@@ -78,6 +84,21 @@ interface SusuContextType {
     notes?: string;
     dayNumber?: number;
   }) => Transaction;
+
+  editTransaction: (
+    id: string,
+    updates: {
+      amount?: number;
+      paymentMethod?: PaymentMethod;
+      timestamp?: string;
+      notes?: string;
+      susuDayNumber?: number;
+      bankerId?: string;
+      isFirstDepositOfficeFee?: boolean;
+    }
+  ) => boolean;
+
+  deleteTransaction: (id: string, reason?: string) => boolean;
 
   initiateWithdrawal: (params: {
     memberId: string;
@@ -214,10 +235,6 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const localOnly = prev.filter((r) => !cloudIds.has(r.id));
               return [...firestoreData.routes, ...localOnly];
             });
-          } else {
-            // Seed default routes to Firestore if empty
-            DEFAULT_ROUTES.forEach((r) => firebaseService.saveRoute(r));
-            setRoutes(DEFAULT_ROUTES);
           }
 
           if (firestoreData.transactions && firestoreData.transactions.length > 0) {
@@ -386,6 +403,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Field Banker login
       const banker = bankers.find(
         (b) =>
+          (b.username && b.username.toLowerCase() === trimmedUser) ||
           b.id.toLowerCase() === trimmedUser ||
           b.name.toLowerCase() === trimmedUser ||
           b.phone.replace(/\s+/g, '') === trimmedUser.replace(/\s+/g, '')
@@ -475,19 +493,21 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const totalOfficeRevenue = members.reduce((sum, m) => sum + (m.officeFeePaid || 0), 0);
 
   // Add Banker
-  const addBanker = (data: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { password?: string }) => {
+  const addBanker = (data: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { username?: string; password?: string }) => {
     const nextNum = bankers.length + 1;
     const newId = `BK-${String(nextNum).padStart(3, '0')}`;
+    const generatedUsername = data.username?.trim().toLowerCase() || data.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
     const newBanker: Banker = {
       ...data,
       id: newId,
+      username: generatedUsername,
       collectedToday: 0,
       withdrawnToday: 0,
       assignedMemberCount: 0,
       status: 'active',
       joinedDate: new Date().toISOString().split('T')[0],
       lastActive: 'Just registered',
-      password: data.password || '1234',
+      password: data.password?.trim() || '1234',
     };
     const updatedBankers = [newBanker, ...bankers];
     setBankers(updatedBankers);
@@ -510,9 +530,10 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       targetType: 'banker',
       targetId: newId,
       targetName: data.name,
-      description: `New mobile banker account created for ${data.name} (ID: ${newId}) assigned to route "${data.routeName || 'Assigned Zone'}".`,
+      description: `New mobile banker account created for ${data.name} (Username: "${generatedUsername}", ID: ${newId}) assigned to route "${data.routeName || 'Assigned Zone'}".`,
       details: {
         bankerId: newId,
+        username: generatedUsername,
         name: data.name,
         phone: data.phone,
         route: data.routeName,
@@ -563,6 +584,156 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         auditLogs,
       });
       return updatedList;
+    });
+  };
+
+  // Add Route / Zone
+  const addRoute = (data: Omit<Route, 'id' | 'totalMembers'> & { id?: string }) => {
+    const nextNum = routes.length + 1;
+    const newId = data.id || `ROUTE-${nextNum.toString().padStart(2, '0')}`;
+    const newRoute: Route = {
+      id: newId,
+      name: data.name,
+      zone: data.zone || '',
+      description: data.description || '',
+      bankerId: data.bankerId || '',
+      bankerName: data.bankerName || 'Unassigned',
+      totalMembers: 0,
+      dailyEstimatedTarget: Number(data.dailyEstimatedTarget) || 0,
+      stopsCount: Number(data.stopsCount) || 0,
+    };
+
+    setRoutes((prev) => {
+      const updated = [...prev, newRoute];
+      saveStoredData({
+        bankers,
+        members,
+        transactions,
+        routes: updated,
+        reconciliations,
+        auditLogs,
+      });
+      return updated;
+    });
+
+    firebaseService.saveRoute(newRoute);
+    supabaseService.upsertRoute(newRoute);
+
+    addAuditLog({
+      action: 'ROUTE_CREATED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'route',
+      targetId: newId,
+      targetName: newRoute.name,
+      description: `Market route / zone "${newRoute.name}" created (Zone: ${newRoute.zone || 'General'}).`,
+      severity: 'info',
+    });
+
+    return newRoute;
+  };
+
+  // Update Route / Zone
+  const updateRoute = (id: string, updates: Partial<Route>) => {
+    setRoutes((prev) => {
+      const updatedList = prev.map((r) => {
+        if (r.id === id) {
+          const updated = { ...r, ...updates };
+          firebaseService.saveRoute(updated);
+          supabaseService.upsertRoute(updated);
+          return updated;
+        }
+        return r;
+      });
+      saveStoredData({
+        bankers,
+        members,
+        transactions,
+        routes: updatedList,
+        reconciliations,
+        auditLogs,
+      });
+      return updatedList;
+    });
+  };
+
+  // Delete Route / Zone
+  const deleteRoute = (id: string) => {
+    const targetRoute = routes.find((r) => r.id === id);
+    firebaseService.deleteRoute(id);
+    supabaseService.deleteRoute(id);
+
+    setRoutes((prev) => {
+      const updatedList = prev.filter((r) => r.id !== id);
+      saveStoredData({
+        bankers,
+        members,
+        transactions,
+        routes: updatedList,
+        reconciliations,
+        auditLogs,
+      });
+      return updatedList;
+    });
+
+    // Also update any bankers or members that were assigned to this route
+    setBankers((prev) =>
+      prev.map((b) => {
+        if (b.routeId === id) {
+          const updated = { ...b, routeId: '', routeName: 'Unassigned Route' };
+          firebaseService.saveBanker(updated);
+          supabaseService.upsertBanker(updated);
+          return updated;
+        }
+        return b;
+      })
+    );
+
+    setMembers((prev) =>
+      prev.map((m) => {
+        if (m.routeId === id) {
+          const updated = { ...m, routeId: '', routeName: 'General Collection' };
+          firebaseService.saveMember(updated);
+          supabaseService.upsertMember(updated);
+          return updated;
+        }
+        return m;
+      })
+    );
+
+    addAuditLog({
+      action: 'ROUTE_DELETED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'route',
+      targetId: id,
+      targetName: targetRoute?.name || id,
+      description: `Market zone / route "${targetRoute?.name || id}" was deleted from the system.`,
+      severity: 'warning',
+    });
+  };
+
+  // Clear All Routes / Zones
+  const clearAllRoutes = () => {
+    firebaseService.clearAllRoutes();
+    supabaseService.clearAllRoutes();
+    setRoutes([]);
+    saveStoredData({
+      bankers,
+      members,
+      transactions,
+      routes: [],
+      reconciliations,
+      auditLogs,
+    });
+    addAuditLog({
+      action: 'ROUTES_CLEARED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'route',
+      targetId: 'ALL',
+      description: `All market zones / routes were cleared.`,
+      severity: 'warning',
     });
   };
 
@@ -881,6 +1052,285 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return newTx;
+  };
+
+  // Edit Transaction (Admin only - modifies deposit/withdrawal amount, method, timestamp, notes, or day)
+  const editTransaction = (
+    id: string,
+    updates: {
+      amount?: number;
+      paymentMethod?: PaymentMethod;
+      timestamp?: string;
+      notes?: string;
+      susuDayNumber?: number;
+      bankerId?: string;
+      isFirstDepositOfficeFee?: boolean;
+    }
+  ): boolean => {
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return false;
+
+    const oldAmount = tx.amount;
+    const newAmount = updates.amount !== undefined ? Number(updates.amount) : oldAmount;
+    const amountDiff = newAmount - oldAmount;
+
+    let updatedBankers = bankers;
+    let updatedMembers = members;
+
+    // 1. Adjust Member financial state
+    if (tx.memberId) {
+      updatedMembers = members.map((m) => {
+        if (m.id === tx.memberId) {
+          let updatedTotalBalance = m.totalBalance;
+          let updatedOfficeFee = m.officeFeePaid;
+          let updatedTotalSavings = m.totalSavingsAllTime;
+          let updatedWithdrawn = m.totalWithdrawnAllTime;
+
+          if (tx.type === 'DEPOSIT') {
+            const isOffice = updates.isFirstDepositOfficeFee !== undefined ? updates.isFirstDepositOfficeFee : tx.isFirstDepositOfficeFee;
+            if (isOffice) {
+              updatedOfficeFee = Math.max(0, m.officeFeePaid + amountDiff);
+            } else {
+              updatedTotalBalance = Math.max(0, m.totalBalance + amountDiff);
+            }
+            updatedTotalSavings = Math.max(0, m.totalSavingsAllTime + amountDiff);
+          } else if (tx.type === 'WITHDRAWAL') {
+            if (tx.status === 'APPROVED' || tx.status === 'DISBURSED' || tx.status === 'COMPLETED') {
+              updatedTotalBalance = Math.max(0, m.totalBalance - amountDiff);
+              updatedWithdrawn = Math.max(0, m.totalWithdrawnAllTime + amountDiff);
+            }
+          }
+
+          // Update matching stamp in member's passbook card
+          const targetDayNum = updates.susuDayNumber !== undefined ? updates.susuDayNumber : tx.susuDayNumber;
+          const updatedStamps = m.stamps.map((stamp) => {
+            if (
+              (stamp.receiptId && stamp.receiptId === tx.receiptNumber) ||
+              (targetDayNum && stamp.day === targetDayNum)
+            ) {
+              return {
+                ...stamp,
+                amount: newAmount,
+                date: updates.timestamp ? updates.timestamp.split('T')[0] : stamp.date,
+                isOfficeFee: updates.isFirstDepositOfficeFee !== undefined ? updates.isFirstDepositOfficeFee : stamp.isOfficeFee,
+              };
+            }
+            return stamp;
+          });
+
+          const updatedM: Member = {
+            ...m,
+            totalBalance: updatedTotalBalance,
+            officeFeePaid: updatedOfficeFee,
+            totalSavingsAllTime: updatedTotalSavings,
+            totalWithdrawnAllTime: updatedWithdrawn,
+            stamps: updatedStamps,
+          };
+          firebaseService.saveMember(updatedM);
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
+        }
+        return m;
+      });
+      setMembers(updatedMembers);
+    }
+
+    // 2. Adjust Banker collection metrics if today
+    if (tx.bankerId && amountDiff !== 0) {
+      updatedBankers = bankers.map((b) => {
+        if (b.id === tx.bankerId) {
+          const updatedB: Banker = {
+            ...b,
+            collectedToday: tx.type === 'DEPOSIT' ? Math.max(0, b.collectedToday + amountDiff) : b.collectedToday,
+            withdrawnToday: tx.type === 'WITHDRAWAL' ? Math.max(0, b.withdrawnToday + amountDiff) : b.withdrawnToday,
+          };
+          firebaseService.saveBanker(updatedB);
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
+        }
+        return b;
+      });
+      setBankers(updatedBankers);
+    }
+
+    // 3. Update Transaction Record
+    const updatedTx: Transaction = {
+      ...tx,
+      amount: newAmount,
+      netAmount: newAmount,
+      paymentMethod: updates.paymentMethod || tx.paymentMethod,
+      timestamp: updates.timestamp || tx.timestamp,
+      notes: updates.notes || tx.notes,
+      susuDayNumber: updates.susuDayNumber !== undefined ? updates.susuDayNumber : tx.susuDayNumber,
+      isFirstDepositOfficeFee: updates.isFirstDepositOfficeFee !== undefined ? updates.isFirstDepositOfficeFee : tx.isFirstDepositOfficeFee,
+      bankerId: updates.bankerId || tx.bankerId,
+    };
+
+    const updatedTransactions = transactions.map((t) => (t.id === id ? updatedTx : t));
+    setTransactions(updatedTransactions);
+    firebaseService.saveTransaction(updatedTx);
+    supabaseService.insertTransaction(updatedTx);
+
+    saveStoredData({
+      bankers: updatedBankers,
+      members: updatedMembers,
+      transactions: updatedTransactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
+
+    addAuditLog({
+      action: 'TRANSACTION_EDITED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'transaction',
+      targetId: tx.id,
+      targetName: tx.memberName,
+      amount: newAmount,
+      description: `Transaction ${tx.receiptNumber} (${tx.type}) modified. ${amountDiff !== 0 ? `Amount adjusted from ${formatMoney(oldAmount)} to ${formatMoney(newAmount)}.` : 'Details updated.'}`,
+      details: {
+        transactionId: tx.id,
+        receiptNumber: tx.receiptNumber,
+        oldAmount,
+        newAmount,
+        updates,
+      },
+      severity: 'info',
+    });
+
+    return true;
+  };
+
+  // Delete Transaction / Remove Double Entry (Admin only - restores balances, stamps, & logs audit trail)
+  const deleteTransaction = (id: string, reason?: string): boolean => {
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return false;
+
+    let updatedBankers = bankers;
+    let updatedMembers = members;
+
+    // 1. Revert Member balances, stamps and cycle count
+    if (tx.memberId) {
+      updatedMembers = members.map((m) => {
+        if (m.id === tx.memberId) {
+          let updatedTotalBalance = m.totalBalance;
+          let updatedOfficeFee = m.officeFeePaid;
+          let updatedTotalSavings = m.totalSavingsAllTime;
+          let updatedWithdrawn = m.totalWithdrawnAllTime;
+          let updatedPaidDays = m.currentCyclePaidDays;
+
+          if (tx.type === 'DEPOSIT') {
+            if (tx.isFirstDepositOfficeFee) {
+              updatedOfficeFee = Math.max(0, m.officeFeePaid - tx.amount);
+            } else {
+              updatedTotalBalance = Math.max(0, m.totalBalance - tx.netAmount);
+            }
+            updatedTotalSavings = Math.max(0, m.totalSavingsAllTime - tx.amount);
+            updatedPaidDays = Math.max(0, m.currentCyclePaidDays - 1);
+          } else if (tx.type === 'WITHDRAWAL') {
+            if (tx.status === 'APPROVED' || tx.status === 'DISBURSED' || tx.status === 'COMPLETED') {
+              updatedTotalBalance = m.totalBalance + tx.amount;
+              updatedWithdrawn = Math.max(0, m.totalWithdrawnAllTime - tx.amount);
+            }
+          }
+
+          // Clear stamp if matching receipt number or day number
+          const targetDayNum = tx.susuDayNumber;
+          const updatedStamps = m.stamps.map((stamp) => {
+            if (
+              (stamp.receiptId && stamp.receiptId === tx.receiptNumber) ||
+              (targetDayNum && stamp.day === targetDayNum)
+            ) {
+              return {
+                day: stamp.day,
+                verified: false,
+                amount: undefined,
+                date: undefined,
+                receiptId: undefined,
+                bankerName: undefined,
+                isOfficeFee: undefined,
+              };
+            }
+            return stamp;
+          });
+
+          // Check if status needs to revert from cycle_ready
+          const newStatus = updatedPaidDays < m.susuCycleDays && m.status === 'cycle_ready' ? 'active' : m.status;
+
+          const updatedM: Member = {
+            ...m,
+            totalBalance: updatedTotalBalance,
+            officeFeePaid: updatedOfficeFee,
+            totalSavingsAllTime: updatedTotalSavings,
+            totalWithdrawnAllTime: updatedWithdrawn,
+            currentCyclePaidDays: updatedPaidDays,
+            status: newStatus,
+            stamps: updatedStamps,
+          };
+          firebaseService.saveMember(updatedM);
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
+        }
+        return m;
+      });
+      setMembers(updatedMembers);
+    }
+
+    // 2. Revert Banker daily totals
+    if (tx.bankerId) {
+      updatedBankers = bankers.map((b) => {
+        if (b.id === tx.bankerId) {
+          const updatedB: Banker = {
+            ...b,
+            collectedToday: tx.type === 'DEPOSIT' ? Math.max(0, b.collectedToday - tx.amount) : b.collectedToday,
+            withdrawnToday: tx.type === 'WITHDRAWAL' ? Math.max(0, b.withdrawnToday - tx.amount) : b.withdrawnToday,
+          };
+          firebaseService.saveBanker(updatedB);
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
+        }
+        return b;
+      });
+      setBankers(updatedBankers);
+    }
+
+    // 3. Remove transaction from ledger
+    const updatedTransactions = transactions.filter((t) => t.id !== id);
+    setTransactions(updatedTransactions);
+    firebaseService.deleteTransaction(id);
+    supabaseService.deleteTransaction(id);
+
+    saveStoredData({
+      bankers: updatedBankers,
+      members: updatedMembers,
+      transactions: updatedTransactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
+
+    addAuditLog({
+      action: 'TRANSACTION_DELETED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'transaction',
+      targetId: tx.id,
+      targetName: tx.memberName,
+      amount: tx.amount,
+      description: `Double entry / transaction ${tx.receiptNumber} (${tx.type} of ${formatMoney(tx.amount)}) was deleted and reversed.${reason ? ` Reason: ${reason}` : ''}`,
+      details: {
+        transactionId: tx.id,
+        receiptNumber: tx.receiptNumber,
+        memberName: tx.memberName,
+        amount: tx.amount,
+        type: tx.type,
+        reason: reason || 'Double deposit entry removed by Admin',
+      },
+      severity: 'warning',
+    });
+
+    return true;
   };
 
   // Initiate Member Withdrawal
@@ -1235,6 +1685,9 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRoutes([]);
     setReconciliations([]);
     setAuditLogs([]);
+    firebaseService.clearAllRoutes();
+    supabaseService.clearAllRoutes();
+    localStorage.removeItem('bendaz_susu_app_data_v6');
     localStorage.removeItem('bendaz_susu_app_data_v5');
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
@@ -1246,6 +1699,9 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRoutes([]);
     setReconciliations([]);
     setAuditLogs([]);
+    firebaseService.clearAllRoutes();
+    supabaseService.clearAllRoutes();
+    localStorage.removeItem('bendaz_susu_app_data_v6');
     localStorage.removeItem('bendaz_susu_app_data_v5');
     localStorage.removeItem('bendaz_susu_app_data_v4');
   };
@@ -1287,7 +1743,13 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteBanker,
         addMember,
         updateMember,
+        addRoute,
+        updateRoute,
+        deleteRoute,
+        clearAllRoutes,
         recordDeposit,
+        editTransaction,
+        deleteTransaction,
         initiateWithdrawal,
         approveWithdrawal,
         rejectWithdrawal,
