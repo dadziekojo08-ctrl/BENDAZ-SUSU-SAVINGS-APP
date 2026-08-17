@@ -527,6 +527,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {/* TAB 1: LIVE BANKER FLEET MONITOR */}
           {activeTab === 'monitor' && (
             <div className="space-y-6">
+              {/* Double Deposit Detection Alert in Monitor */}
+              {duplicateTxIds.size > 0 && (
+                <div className="p-4 bg-[#C27D50]/15 border-2 border-[#C27D50]/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#C27D50] text-white flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm text-[#8A3E1B]">
+                        {duplicateTxIds.size} Potential Double Deposits Detected in System
+                      </span>
+                      <p className="text-xs text-[#7A4020] mt-0.5">
+                        Multiple savings contributions recorded for the same saver on the same day or matching savings day stamps.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveTab('ledger');
+                      setLedgerTypeFilter('DUPLICATES');
+                    }}
+                    className="px-4 py-2 bg-[#C27D50] hover:bg-[#A34E36] text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Review & Delete Double Deposits</span>
+                  </button>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h3 className="font-serif-brand font-bold text-lg text-[#3A3D2C]">
@@ -1641,7 +1670,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               />
                             </td>
                             <td className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isDuplicate && (
+                                  <button
+                                    onClick={() => setDeletingTransaction(tx)}
+                                    className="px-2.5 py-1 bg-[#A34E36] hover:bg-[#8A3E2A] text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-xs"
+                                    title="Delete Double Deposit from System"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete Double Deposit</span>
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => setEditingTransaction(tx)}
                                   className="p-1.5 text-[#5A5E46] hover:bg-[#8E9775]/20 rounded-lg cursor-pointer transition-colors"
@@ -1649,13 +1688,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
-                                <button
-                                  onClick={() => setDeletingTransaction(tx)}
-                                  className="p-1.5 text-[#A34E36] hover:bg-[#C27D50]/20 rounded-lg cursor-pointer transition-colors"
-                                  title="Delete & Reverse Entry (Double Deposit Removal)"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {!isDuplicate && (
+                                  <button
+                                    onClick={() => setDeletingTransaction(tx)}
+                                    className="p-1.5 text-[#A34E36] hover:bg-[#C27D50]/20 rounded-lg cursor-pointer transition-colors"
+                                    title="Delete & Reverse Entry"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => setActiveReceipt(tx)}
                                   className="p-1.5 text-[#6A6A55] hover:bg-[#EAE7DC] rounded-lg cursor-pointer"

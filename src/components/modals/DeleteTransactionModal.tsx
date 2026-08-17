@@ -64,10 +64,10 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
             </div>
             <div>
               <h2 className="font-serif-brand font-bold text-lg text-white">
-                Delete & Reverse Entry
+                Delete Double Deposit Entry
               </h2>
               <p className="text-xs text-white/80">
-                Permanently remove duplicate or faulty ledger record
+                Permanently delete duplicate deposit and revert member savings balance
               </p>
             </div>
           </div>
@@ -92,9 +92,9 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
           <div className="p-3.5 bg-[#C27D50]/10 border border-[#C27D50]/30 rounded-2xl flex items-start gap-2.5">
             <ShieldAlert className="w-5 h-5 text-[#C27D50] shrink-0 mt-0.5" />
             <div className="text-xs text-[#7A4020]">
-              <p className="font-bold">Ledger Reversal Action</p>
+              <p className="font-bold">Automatic Balance & Stamp Rollback</p>
               <p className="mt-0.5 leading-relaxed">
-                Deleting this entry will automatically revert the saver's balance and clear the corresponding passbook stamp. An audit log entry will be permanently recorded.
+                Deleting this duplicate deposit will automatically deduct <strong>{formatMoney(transaction.amount)}</strong> from <strong>{transaction.memberName}</strong>'s balance and remove any duplicate passbook stamp for Day #{transaction.susuDayNumber || 'N/A'}.
               </p>
             </div>
           </div>
@@ -106,13 +106,7 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
                 <span className="font-mono text-xs font-bold text-[#383B2B]">
                   {transaction.receiptNumber}
                 </span>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    transaction.type === 'DEPOSIT'
-                      ? 'bg-[#8E9775]/20 text-[#5A5E46]'
-                      : 'bg-[#C27D50]/20 text-[#C27D50]'
-                  }`}
-                >
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C27D50]/20 text-[#8A3E1B]">
                   {transaction.type}
                 </span>
               </div>
@@ -127,7 +121,7 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
                 <strong className="text-[#383B2B]">{transaction.memberName}</strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#8A8A70]">Current Savings:</span>
+                <span className="text-[#8A8A70]">Current Balance:</span>
                 <span className="font-mono font-bold text-[#5A5E46]">
                   {formatMoney(targetMember?.totalBalance || 0)}
                 </span>
@@ -137,10 +131,11 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
                 <span>{transaction.bankerName}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#8A8A70]">Recorded:</span>
+                <span className="text-[#8A8A70]">Recorded Time:</span>
                 <span>
-                  {new Date(transaction.timestamp).toLocaleDateString('en-GB', {
+                  {new Date(transaction.timestamp).toLocaleString('en-GB', {
                     dateStyle: 'medium',
+                    timeStyle: 'short',
                   })}
                 </span>
               </div>
@@ -151,16 +146,10 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
               <p className="text-[11px] font-bold text-[#383B2B] uppercase tracking-wider mb-1">
                 Financial Impact of Deletion:
               </p>
-              {transaction.type === 'DEPOSIT' ? (
-                <p className="text-xs text-[#C27D50] font-medium">
-                  • <strong>-{formatMoney(transaction.amount)}</strong> will be deducted from {transaction.memberName}'s balance.
-                  {transaction.susuDayNumber && ` Stamp for Day #${transaction.susuDayNumber} will be cleared.`}
-                </p>
-              ) : (
-                <p className="text-xs text-[#5A5E46] font-medium">
-                  • <strong>+{formatMoney(transaction.amount)}</strong> will be refunded to {transaction.memberName}'s savings balance.
-                </p>
-              )}
+              <p className="text-xs text-[#C27D50] font-medium">
+                • <strong>-{formatMoney(transaction.amount)}</strong> will be removed from {transaction.memberName}'s account.
+                {transaction.susuDayNumber ? ` Passbook stamp for Day #${transaction.susuDayNumber} will be cleared.` : ''}
+              </p>
             </div>
           </div>
 
@@ -215,7 +204,7 @@ export const DeleteTransactionModal: React.FC<DeleteTransactionModalProps> = ({
               className="px-5 py-2.5 rounded-xl bg-[#A34E36] hover:bg-[#8A3E2A] text-white text-xs font-bold flex items-center gap-2 shadow-md transition-transform active:scale-95 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
-              <span>{isDeleting ? 'Deleting...' : 'Confirm Delete & Reverse'}</span>
+              <span>{isDeleting ? 'Deleting Double Deposit...' : 'Delete Double Deposit Now'}</span>
             </button>
           </div>
         </div>
