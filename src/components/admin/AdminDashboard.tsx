@@ -4,6 +4,9 @@ import { Banker, Member, Transaction, Route, TransactionStatus } from '../../typ
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
 import { AuditLog } from './AuditLog';
 import { EditBankerModal } from '../modals/EditBankerModal';
+import { DeleteBankerModal } from '../modals/DeleteBankerModal';
+import { EditMemberModal } from '../modals/EditMemberModal';
+import { DeleteMemberModal } from '../modals/DeleteMemberModal';
 import { EditTransactionModal } from '../modals/EditTransactionModal';
 import { DeleteTransactionModal } from '../modals/DeleteTransactionModal';
 import {
@@ -100,8 +103,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [rejectionModalTx, setRejectionModalTx] = useState<Transaction | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   
-  // Modals for Banker & Transaction adjustments
+  // Modals for Banker, Member & Transaction adjustments
   const [editingBanker, setEditingBanker] = useState<Banker | null>(null);
+  const [deletingBanker, setDeletingBanker] = useState<Banker | null>(null);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [deletingMember, setDeletingMember] = useState<Member | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   
@@ -777,7 +783,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => setEditingBanker(b)}
                               className="px-2.5 py-1 bg-[#5A5E46]/10 hover:bg-[#5A5E46]/20 text-[#5A5E46] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
@@ -789,8 +795,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <button
                               onClick={() => onOpenReconcile(b.id)}
                               className="px-2.5 py-1 bg-[#C27D50]/15 hover:bg-[#C27D50]/25 text-[#9A5025] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                              title="Reconcile Cash"
                             >
                               Reconcile
+                            </button>
+                            <button
+                              onClick={() => setDeletingBanker(b)}
+                              className="p-1 bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#DC2626] rounded-lg text-xs font-bold cursor-pointer transition-colors border border-[#FCA5A5]/60"
+                              title="Delete Banker Account"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -1436,19 +1450,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <button
                                   onClick={() => onOpenDeposit(m.id)}
                                   className="px-2 py-1 bg-[#8E9775]/15 hover:bg-[#8E9775]/25 text-[#4A5038] rounded font-bold text-[11px] cursor-pointer"
+                                  title="Record Cash Deposit"
                                 >
                                   Deposit
                                 </button>
                                 <button
                                   onClick={() => onOpenWithdrawal(m.id)}
                                   className="px-2 py-1 bg-[#C27D50]/15 hover:bg-[#C27D50]/25 text-[#9A5025] rounded font-bold text-[11px] cursor-pointer"
+                                  title="Request Withdrawal"
                                 >
                                   Withdraw
                                 </button>
                                 <button
+                                  onClick={() => setEditingMember(m)}
+                                  className="p-1 bg-[#8E9775]/15 hover:bg-[#8E9775]/30 text-[#4A5038] rounded text-xs cursor-pointer transition-colors"
+                                  title="Edit Saver Account"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingMember(m)}
+                                  className="p-1 bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#DC2626] rounded text-xs cursor-pointer transition-colors border border-[#FCA5A5]/60"
+                                  title="Delete Saver Account"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
                                   onClick={() => onSelectMember(m)}
                                   className="p-1 hover:bg-[#EAE7DC] rounded text-[#7A7A65] cursor-pointer"
-                                  title="View Passbook"
+                                  title="View Passbook Statement"
                                 >
                                   <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -2055,6 +2085,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         banker={editingBanker}
         isOpen={Boolean(editingBanker)}
         onClose={() => setEditingBanker(null)}
+      />
+
+      {/* Delete Banker Modal */}
+      <DeleteBankerModal
+        banker={deletingBanker}
+        isOpen={Boolean(deletingBanker)}
+        onClose={() => setDeletingBanker(null)}
+      />
+
+      {/* Edit Member Account Modal */}
+      <EditMemberModal
+        member={editingMember}
+        isOpen={Boolean(editingMember)}
+        onClose={() => setEditingMember(null)}
+      />
+
+      {/* Delete Member Account Modal */}
+      <DeleteMemberModal
+        member={deletingMember}
+        isOpen={Boolean(deletingMember)}
+        onClose={() => setDeletingMember(null)}
       />
 
       {/* Edit Transaction Modal */}

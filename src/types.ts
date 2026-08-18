@@ -139,6 +139,8 @@ export interface ReconciliationRecord {
 
 export type AuditActionType =
   | 'MEMBER_CREATED'
+  | 'MEMBER_UPDATED'
+  | 'MEMBER_DELETED'
   | 'DEPOSIT_RECORDED'
   | 'WITHDRAWAL_REQUESTED'
   | 'WITHDRAWAL_APPROVED'

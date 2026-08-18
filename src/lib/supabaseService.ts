@@ -210,6 +210,16 @@ export const supabaseService = {
     }
   },
 
+  // Delete Member
+  async deleteMember(memberId: string) {
+    if (!isSupabaseConfigured || !memberId) return;
+    try {
+      await supabase.from('members').delete().eq('id', memberId);
+    } catch (e) {
+      console.error('Supabase delete member error:', e);
+    }
+  },
+
   // Save Banker
   async upsertBanker(banker: Banker) {
     if (!isSupabaseConfigured) return;
@@ -239,6 +249,16 @@ export const supabaseService = {
       });
     } catch (e) {
       console.error('Supabase upsert banker error:', e);
+    }
+  },
+
+  // Delete Banker
+  async deleteBanker(bankerId: string) {
+    if (!isSupabaseConfigured || !bankerId) return;
+    try {
+      await supabase.from('bankers').delete().eq('id', bankerId);
+    } catch (e) {
+      console.error('Supabase delete banker error:', e);
     }
   },
 

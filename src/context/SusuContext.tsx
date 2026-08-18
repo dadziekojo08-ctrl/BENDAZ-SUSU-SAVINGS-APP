@@ -66,9 +66,10 @@ interface SusuContextType {
   // Actions
   addBanker: (banker: Omit<Banker, 'id' | 'collectedToday' | 'withdrawnToday' | 'assignedMemberCount' | 'status' | 'joinedDate' | 'lastActive'> & { username?: string; password?: string }) => Banker;
   updateBanker: (id: string, updates: Partial<Banker>) => void;
-  deleteBanker: (id: string) => void;
+  deleteBanker: (id: string, reassignToBankerId?: string, reason?: string) => void;
   addMember: (member: Omit<Member, 'id' | 'totalBalance' | 'officeFeePaid' | 'totalSavingsAllTime' | 'totalWithdrawnAllTime' | 'currentCyclePaidDays' | 'status' | 'joinedDate' | 'visitedToday' | 'depositedToday' | 'stamps'> & { initialDeposit?: number }) => Member;
   updateMember: (id: string, updates: Partial<Member>) => void;
+  deleteMember: (id: string, reason?: string) => void;
   
   // Route / Zone Actions
   addRoute: (route: Omit<Route, 'id' | 'totalMembers'> & { id?: string }) => Route;
@@ -571,19 +572,71 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Delete Banker
-  const deleteBanker = (id: string) => {
-    firebaseService.deleteBanker(id);
-    setBankers((prev) => {
-      const updatedList = prev.filter((b) => b.id !== id);
-      saveStoredData({
-        bankers: updatedList,
-        members,
-        transactions,
-        routes,
-        reconciliations,
-        auditLogs,
+  const deleteBanker = (id: string, reassignToBankerId?: string, reason?: string) => {
+    const targetBanker = bankers.find((b) => b.id === id);
+    if (!targetBanker) return;
+
+    const replacementBanker = reassignToBankerId ? bankers.find((b) => b.id === reassignToBankerId) : null;
+
+    // 1. Reassign any members previously assigned to this banker
+    const reassignedMembers = members.map((m) => {
+      if (m.assignedBankerId === id) {
+        const updated = {
+          ...m,
+          assignedBankerId: replacementBanker ? replacementBanker.id : '',
+          assignedBankerName: replacementBanker ? replacementBanker.name : 'Unassigned Collector',
+        };
+        firebaseService.saveMember(updated);
+        supabaseService.upsertMember(updated);
+        return updated;
+      }
+      return m;
+    });
+    setMembers(reassignedMembers);
+
+    // 2. Remove banker from bankers list
+    const updatedBankers = bankers
+      .filter((b) => b.id !== id)
+      .map((b) => {
+        if (replacementBanker && b.id === replacementBanker.id) {
+          const membersAssignedCount = reassignedMembers.filter((m) => m.assignedBankerId === b.id).length;
+          return { ...b, assignedMemberCount: membersAssignedCount };
+        }
+        return b;
       });
-      return updatedList;
+    setBankers(updatedBankers);
+
+    // 3. Persist to Firestore and Supabase
+    firebaseService.deleteBanker(id);
+    supabaseService.deleteBanker(id);
+
+    // 4. Save to local storage
+    saveStoredData({
+      bankers: updatedBankers,
+      members: reassignedMembers,
+      transactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
+
+    // 5. Add Audit Log
+    addAuditLog({
+      action: 'BANKER_DELETED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'banker',
+      targetId: id,
+      targetName: targetBanker.name,
+      description: `Mobile Banker account "${targetBanker.name}" (@${targetBanker.username || id}) was permanently removed.${replacementBanker ? ` Assigned members reassigned to ${replacementBanker.name}.` : ' Assigned members marked as unassigned.'}${reason ? ` Reason: ${reason}` : ''}`,
+      details: {
+        bankerId: id,
+        name: targetBanker.name,
+        phone: targetBanker.phone,
+        reassignedTo: replacementBanker?.name || 'Unassigned',
+        reason: reason || 'Admin deletion',
+      },
+      severity: 'warning',
     });
   };
 
@@ -882,20 +935,60 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newMember;
   };
 
-  // Update Member
+  // Update Member Account
   const updateMember = (id: string, updates: Partial<Member>) => {
-    setMembers((prev) => {
-      const updatedList = prev.map((m) => {
-        if (m.id === id) {
-          const updated = { ...m, ...updates };
-          firebaseService.saveMember(updated);
-          supabaseService.upsertMember(updated);
-          return updated;
+    const existingMember = members.find((m) => m.id === id);
+    if (!existingMember) return;
+
+    let updatedBankers = bankers;
+
+    // Handle change of assigned banker if assignedBankerId is updated
+    if (updates.assignedBankerId && updates.assignedBankerId !== existingMember.assignedBankerId) {
+      const oldBankerId = existingMember.assignedBankerId;
+      const newBankerId = updates.assignedBankerId;
+      const newBanker = bankers.find((b) => b.id === newBankerId);
+      if (newBanker && !updates.assignedBankerName) {
+        updates.assignedBankerName = newBanker.name;
+      }
+
+      updatedBankers = bankers.map((b) => {
+        if (b.id === oldBankerId) {
+          const updatedB = {
+            ...b,
+            assignedMemberCount: Math.max(0, (b.assignedMemberCount || 0) - 1),
+          };
+          firebaseService.saveBanker(updatedB);
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
         }
-        return m;
+        if (b.id === newBankerId) {
+          const updatedB = {
+            ...b,
+            assignedMemberCount: (b.assignedMemberCount || 0) + 1,
+          };
+          firebaseService.saveBanker(updatedB);
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
+        }
+        return b;
       });
+      setBankers(updatedBankers);
+    }
+
+    // Handle route name sync if routeId changes
+    if (updates.routeId && updates.routeId !== existingMember.routeId) {
+      const route = routes.find((r) => r.id === updates.routeId);
+      if (route && !updates.routeName) {
+        updates.routeName = route.name;
+      }
+    }
+
+    const updatedMember = { ...existingMember, ...updates };
+
+    setMembers((prev) => {
+      const updatedList = prev.map((m) => (m.id === id ? updatedMember : m));
       saveStoredData({
-        bankers,
+        bankers: updatedBankers,
         members: updatedList,
         transactions,
         routes,
@@ -903,6 +996,87 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         auditLogs,
       });
       return updatedList;
+    });
+
+    firebaseService.saveMember(updatedMember);
+    supabaseService.upsertMember(updatedMember);
+
+    // Audit log
+    addAuditLog({
+      action: 'MEMBER_UPDATED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'member',
+      targetId: id,
+      targetName: updatedMember.name,
+      description: `Account details updated for saver "${updatedMember.name}" (Account #${updatedMember.accountNumber || id}).`,
+      details: updates,
+      severity: 'info',
+    });
+  };
+
+  // Delete Member Account
+  const deleteMember = (id: string, reason?: string) => {
+    const targetMember = members.find((m) => m.id === id);
+    if (!targetMember) return;
+
+    // 1. If assigned to a banker, decrement that banker's assignedMemberCount
+    let updatedBankers = bankers;
+    if (targetMember.assignedBankerId) {
+      updatedBankers = bankers.map((b) => {
+        if (b.id === targetMember.assignedBankerId) {
+          const updatedB = {
+            ...b,
+            assignedMemberCount: Math.max(0, (b.assignedMemberCount || 0) - 1),
+          };
+          firebaseService.saveBanker(updatedB);
+          supabaseService.upsertBanker(updatedB);
+          return updatedB;
+        }
+        return b;
+      });
+      setBankers(updatedBankers);
+    }
+
+    // 2. Remove member from members list
+    const updatedMembers = members.filter((m) => m.id !== id);
+    setMembers(updatedMembers);
+
+    // 3. Persist deletion to Firestore and Supabase
+    firebaseService.deleteMember(id);
+    supabaseService.deleteMember(id);
+
+    // 4. Save to local storage
+    saveStoredData({
+      bankers: updatedBankers,
+      members: updatedMembers,
+      transactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
+
+    // 5. Add Audit Log
+    addAuditLog({
+      action: 'MEMBER_DELETED',
+      actorName: currentUser?.name || 'Administrator',
+      actorRole: currentUser?.role || 'admin',
+      targetType: 'member',
+      targetId: id,
+      targetName: targetMember.name,
+      amount: targetMember.totalBalance,
+      description: `Saver account "${targetMember.name}" (Account #${targetMember.accountNumber || id}) with savings balance of ${formatMoney(targetMember.totalBalance)} was permanently deleted from the system.${reason ? ` Reason: ${reason}` : ''}`,
+      details: {
+        memberId: id,
+        accountNumber: targetMember.accountNumber,
+        name: targetMember.name,
+        phone: targetMember.phone,
+        totalBalance: targetMember.totalBalance,
+        totalSavingsAllTime: targetMember.totalSavingsAllTime,
+        assignedBanker: targetMember.assignedBankerName,
+        reason: reason || 'Admin deletion',
+      },
+      severity: 'warning',
     });
   };
 
@@ -1743,6 +1917,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteBanker,
         addMember,
         updateMember,
+        deleteMember,
         addRoute,
         updateRoute,
         deleteRoute,

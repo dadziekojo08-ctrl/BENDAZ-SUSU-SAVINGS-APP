@@ -4,6 +4,8 @@ import { Member, Transaction } from '../../types';
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
 import { EditTransactionModal } from './EditTransactionModal';
 import { DeleteTransactionModal } from './DeleteTransactionModal';
+import { EditMemberModal } from './EditMemberModal';
+import { DeleteMemberModal } from './DeleteMemberModal';
 import {
   X,
   User,
@@ -38,12 +40,17 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   onOpenDeposit,
   onOpenWithdrawal,
 }) => {
-  const { formatMoney, transactions, setActiveReceipt, userRole } = useSusu();
+  const { formatMoney, transactions, setActiveReceipt, userRole, members } = useSusu();
   const [activeTab, setActiveTab] = useState<'card' | 'transactions'>('card');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [isEditingMember, setIsEditingMember] = useState(false);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
 
   if (!member) return null;
+
+  // Use the most up-to-date member data from context if available
+  const currentMember = members.find((m) => m.id === member.id) || member;
 
   const memberTransactions = transactions.filter((t) => t.memberId === member.id);
   const cycleCompletionPct = Math.min(
@@ -90,6 +97,28 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {userRole === 'ADMIN' && (
+              <>
+                <button
+                  onClick={() => setIsEditingMember(true)}
+                  className="bg-[#8E9775]/30 hover:bg-[#8E9775]/50 text-[#F9F8F4] px-3 py-2 rounded-xl border border-[#8E9775]/50 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Edit Saver Profile & Settings"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit Account</span>
+                </button>
+
+                <button
+                  onClick={() => setIsDeletingMember(true)}
+                  className="bg-[#B91C1C]/30 hover:bg-[#B91C1C]/60 text-red-200 px-3 py-2 rounded-xl border border-red-400/40 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Delete Saver Account"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </>
+            )}
+
             <button
               onClick={handlePrintPassbook}
               className="bg-white/10 hover:bg-white/20 text-[#F9F8F4] p-2 rounded-xl border border-white/20 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -382,6 +411,23 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         transaction={deletingTransaction}
         isOpen={Boolean(deletingTransaction)}
         onClose={() => setDeletingTransaction(null)}
+      />
+
+      {/* Modals for Editing & Deleting Member Account */}
+      <EditMemberModal
+        member={currentMember}
+        isOpen={isEditingMember}
+        onClose={() => setIsEditingMember(false)}
+      />
+
+      <DeleteMemberModal
+        member={currentMember}
+        isOpen={isDeletingMember}
+        onClose={() => setIsDeletingMember(false)}
+        onSuccess={() => {
+          setIsDeletingMember(false);
+          onClose();
+        }}
       />
     </div>
   );
