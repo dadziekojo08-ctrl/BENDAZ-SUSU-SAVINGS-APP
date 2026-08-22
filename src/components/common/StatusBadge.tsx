@@ -1,6 +1,6 @@
 import React from 'react';
 import { TransactionStatus, TransactionType } from '../../types';
-import { Clock, CheckCircle2, ShieldCheck, XCircle, Check, ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { Clock, CheckCircle2, ShieldCheck, XCircle, Check, ArrowDownRight, ArrowUpRight, Ban } from 'lucide-react';
 
 interface WithdrawalStatusBadgeProps {
   status: TransactionStatus;
@@ -101,6 +101,23 @@ export const WithdrawalStatusBadge: React.FC<WithdrawalStatusBadgeProps> = ({
           {showSubtext && rejectionReason && (
             <span className="text-[10px] text-[#991B1B] mt-0.5 font-medium pl-1 truncate max-w-xs">
               Reason: {rejectionReason}
+            </span>
+          )}
+        </div>
+      );
+
+    case 'VOIDED':
+      return (
+        <div className={`inline-flex flex-col ${className}`}>
+          <span
+            className={`inline-flex items-center rounded-full font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-xs ${sizeClasses}`}
+          >
+            <Ban className={`${iconSizes} text-rose-600`} />
+            <span>Voided / Reversed</span>
+          </span>
+          {showSubtext && rejectionReason && (
+            <span className="text-[10px] text-rose-600 mt-0.5 font-medium pl-1 truncate max-w-xs">
+              {rejectionReason}
             </span>
           )}
         </div>

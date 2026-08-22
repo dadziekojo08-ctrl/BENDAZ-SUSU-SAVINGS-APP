@@ -9,6 +9,7 @@ import { EditMemberModal } from '../modals/EditMemberModal';
 import { DeleteMemberModal } from '../modals/DeleteMemberModal';
 import { EditTransactionModal } from '../modals/EditTransactionModal';
 import { DeleteTransactionModal } from '../modals/DeleteTransactionModal';
+import { VoidTransactionModal } from '../modals/VoidTransactionModal';
 import {
   ShieldCheck,
   Users,
@@ -110,6 +111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [deletingMember, setDeletingMember] = useState<Member | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [voidingTransaction, setVoidingTransaction] = useState<Transaction | null>(null);
   
   // Route / Zone state
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
@@ -206,6 +208,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         ? t.status === 'PENDING_APPROVAL'
         : ledgerTypeFilter === 'DISBURSED'
         ? t.status === 'DISBURSED' || t.status === 'COMPLETED'
+        : ledgerTypeFilter === 'VOIDED'
+        ? t.status === 'VOIDED'
+        : ledgerTypeFilter === 'RECENT'
+        ? new Date(t.timestamp).toDateString() === new Date().toDateString()
         : ledgerTypeFilter === 'DUPLICATES'
         ? duplicateTxIds.has(t.id)
         : true;
@@ -471,44 +477,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Tabs Bar */}
+      {/* Navigation Buttons Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="px-4 sm:px-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 overflow-x-auto">
+        <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
+          <div className="flex flex-wrap items-center gap-2">
             {[
-              { id: 'members', label: 'Savers & Members', icon: Coins, count: members.length },
-              { id: 'bankers', label: 'Field Bankers', icon: Users, count: bankers.length },
-              { id: 'withdrawals', label: 'Payout Requests', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0 },
-              { id: 'ledger', label: 'Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
-              { id: 'monitor', label: 'Fleet Monitor', icon: Radio, count: totalActiveBankers },
-              { id: 'routes', label: 'Market Routes', icon: MapPin, count: routes.length },
-              { id: 'audit', label: 'Audit Trail', icon: ShieldCheck, count: auditLogs.length },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
+              { id: 'monitor', label: 'Live Bankers Fleet Monitor', icon: Radio, count: totalActiveBankers },
+              { id: 'bankers', label: 'Banker Account & Route', icon: Users, count: bankers.length },
+              { id: 'withdrawals', label: 'Withdrawal Approvals', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0 },
+              { id: 'members', label: 'All Members Directory', icon: Coins, count: members.length },
+              { id: 'ledger', label: 'Daily Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
+              { id: 'routes', label: 'Market Routes & Zones', icon: MapPin, count: routes.length },
+              { id: 'audit', label: 'Audit Trail & Operations', icon: ShieldCheck, count: auditLogs.length },
+            ].map((btn) => {
+              const Icon = btn.icon;
+              const isActive = activeTab === btn.id;
               return (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
+                  key={btn.id}
+                  id={`btn-nav-${btn.id}`}
+                  onClick={() => setActiveTab(btn.id as any)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs ${
                     isActive
-                      ? 'border-emerald-600 text-emerald-800'
-                      : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                      ? 'bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-700/20'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
-                  {tab.count !== undefined && (
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                  <span>{btn.label}</span>
+                  {btn.count !== undefined && (
                     <span
-                      className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                        tab.alert
-                          ? 'bg-amber-500 text-white animate-pulse'
+                      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                        btn.alert
+                          ? 'bg-amber-400 text-slate-900 animate-pulse font-extrabold'
                           : isActive
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-200 text-slate-600'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
-                      {tab.count}
+                      {btn.count}
                     </span>
                   )}
                 </button>
@@ -516,10 +523,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             })}
           </div>
 
-          <div className="py-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               title="Export Transactions to CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
@@ -1556,6 +1563,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     All ({transactions.length})
                   </button>
                   <button
+                    onClick={() => setLedgerTypeFilter('RECENT')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      ledgerTypeFilter === 'RECENT'
+                        ? 'bg-[#3B82F6] text-white'
+                        : 'bg-white text-[#2563EB] border border-[#BFDBFE]'
+                    }`}
+                  >
+                    Today ({transactions.filter((t) => new Date(t.timestamp).toDateString() === new Date().toDateString()).length})
+                  </button>
+                  <button
                     onClick={() => setLedgerTypeFilter('DEPOSIT')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       ledgerTypeFilter === 'DEPOSIT'
@@ -1585,6 +1602,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     Pending Approvals ({pendingWithdrawalRequests.length})
                   </button>
+                  {transactions.some((t) => t.status === 'VOIDED') && (
+                    <button
+                      onClick={() => setLedgerTypeFilter('VOIDED')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        ledgerTypeFilter === 'VOIDED'
+                          ? 'bg-rose-700 text-white'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Voided ({transactions.filter((t) => t.status === 'VOIDED').length})</span>
+                    </button>
+                  )}
                   {duplicateTxIds.size > 0 && (
                     <button
                       onClick={() => setLedgerTypeFilter('DUPLICATES')}
@@ -1638,23 +1668,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     ) : (
                       filteredLedgerTransactions.map((tx) => {
                         const isDuplicate = duplicateTxIds.has(tx.id);
+                        const isVoided = tx.status === 'VOIDED';
                         return (
                           <tr
                             key={tx.id}
                             className={`transition-colors ${
-                              isDuplicate
+                              isVoided
+                                ? 'bg-rose-50/40 opacity-75 hover:bg-rose-50/70'
+                                : isDuplicate
                                 ? 'bg-[#C27D50]/5 hover:bg-[#C27D50]/10'
                                 : 'hover:bg-[#F9F8F4]'
                             }`}
                           >
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-mono font-bold text-[#3A3D2C]">
+                                <span className={`font-mono font-bold ${isVoided ? 'line-through text-slate-400' : 'text-[#3A3D2C]'}`}>
                                   {tx.receiptNumber}
                                 </span>
-                                {isDuplicate && (
+                                {isDuplicate && !isVoided && (
                                   <span className="px-1.5 py-0.2 bg-[#C27D50]/20 text-[#8A3E1B] rounded text-[10px] font-bold border border-[#C27D50]/30" title="Possible duplicate deposit">
                                     Double Entry?
+                                  </span>
+                                )}
+                                {isVoided && (
+                                  <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 rounded text-[10px] font-bold border border-rose-200">
+                                    VOIDED
                                   </span>
                                 )}
                               </div>
@@ -1674,10 +1712,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </td>
                             <td className="py-3 px-4 font-semibold text-[#3A3D2C]">
                               <div>
-                                <span>{tx.memberName}</span>
+                                <span className={isVoided ? 'text-slate-500' : ''}>{tx.memberName}</span>
                                 {tx.susuDayNumber && (
                                   <span className="text-[10px] text-[#7A7A65] block font-mono">
-                                    Day #{tx.susuDayNumber} Stamp
+                                    Day #{tx.susuDayNumber} Stamp {isVoided ? '(Reverted)' : ''}
                                   </span>
                                 )}
                               </div>
@@ -1687,7 +1725,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               {tx.paymentMethod.replace(/_/g, ' ')}
                             </td>
                             <td className="py-3 px-4 font-mono font-bold text-[#3A3D2C]">
-                              <span className={tx.type === 'DEPOSIT' ? 'text-[#15803D]' : 'text-[#C27D50]'}>
+                              <span className={isVoided ? 'line-through text-slate-400' : tx.type === 'DEPOSIT' ? 'text-[#15803D]' : 'text-[#C27D50]'}>
                                 {tx.type === 'DEPOSIT' ? '+' : '-'}
                                 {formatMoney(tx.amount)}
                               </span>
@@ -1701,30 +1739,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
-                                {isDuplicate && (
+                                {/* Explicit Undo / Void Button for Transactions */}
+                                {!isVoided && (
                                   <button
-                                    onClick={() => setDeletingTransaction(tx)}
-                                    className="px-2.5 py-1 bg-[#A34E36] hover:bg-[#8A3E2A] text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-xs"
-                                    title="Delete Double Deposit from System"
+                                    onClick={() => setVoidingTransaction(tx)}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-2xs"
+                                    title="Undo or Void Transaction (Admin Override)"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete Double Deposit</span>
+                                    <RotateCcw className="w-3 h-3 text-rose-600" />
+                                    <span>Undo / Void</span>
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => setEditingTransaction(tx)}
-                                  className="p-1.5 text-[#5A5E46] hover:bg-[#8E9775]/20 rounded-lg cursor-pointer transition-colors"
-                                  title="Edit Ledger Entry (Amount / Channel / Susu Day)"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                {!isDuplicate && (
+                                {isDuplicate && !isVoided && (
                                   <button
                                     onClick={() => setDeletingTransaction(tx)}
-                                    className="p-1.5 text-[#A34E36] hover:bg-[#C27D50]/20 rounded-lg cursor-pointer transition-colors"
-                                    title="Delete & Reverse Entry"
+                                    className="px-2 py-1 bg-[#A34E36] hover:bg-[#8A3E2A] text-white font-bold rounded-lg text-[11px] flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shadow-xs"
+                                    title="Delete Double Deposit from System"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Delete Double</span>
+                                  </button>
+                                )}
+                                {!isVoided && (
+                                  <button
+                                    onClick={() => setEditingTransaction(tx)}
+                                    className="p-1.5 text-[#5A5E46] hover:bg-[#8E9775]/20 rounded-lg cursor-pointer transition-colors"
+                                    title="Edit Ledger Entry (Amount / Channel / Susu Day)"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                                 <button
@@ -2120,6 +2162,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         transaction={deletingTransaction}
         isOpen={Boolean(deletingTransaction)}
         onClose={() => setDeletingTransaction(null)}
+      />
+
+      {/* Undo & Void Transaction Modal (Admin Override) */}
+      <VoidTransactionModal
+        transaction={voidingTransaction}
+        isOpen={Boolean(voidingTransaction)}
+        onClose={() => setVoidingTransaction(null)}
       />
     </div>
   );

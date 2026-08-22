@@ -4,6 +4,7 @@ import { Member, Transaction } from '../../types';
 import { WithdrawalStatusBadge, TransactionTypeBadge } from '../common/StatusBadge';
 import { EditTransactionModal } from './EditTransactionModal';
 import { DeleteTransactionModal } from './DeleteTransactionModal';
+import { VoidTransactionModal } from './VoidTransactionModal';
 import { EditMemberModal } from './EditMemberModal';
 import { DeleteMemberModal } from './DeleteMemberModal';
 import {
@@ -25,6 +26,7 @@ import {
   Building2,
   Edit3,
   Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface MemberDetailModalProps {
@@ -44,6 +46,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   const [activeTab, setActiveTab] = useState<'card' | 'transactions'>('card');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [voidingTransaction, setVoidingTransaction] = useState<Transaction | null>(null);
   const [isEditingMember, setIsEditingMember] = useState(false);
   const [isDeletingMember, setIsDeletingMember] = useState(false);
 
@@ -344,8 +347,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1">
-                        {isAdmin && (
+                        {isAdmin && tx.status !== 'VOIDED' && (
                           <>
+                            <button
+                              onClick={() => setVoidingTransaction(tx)}
+                              className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                              title="Undo / Void Entry (Admin Override)"
+                            >
+                              <RotateCcw className="w-3 h-3 text-rose-600" />
+                              <span>Undo / Void</span>
+                            </button>
                             <button
                               onClick={() => setEditingTransaction(tx)}
                               className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg cursor-pointer transition-colors"
@@ -361,6 +372,11 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </>
+                        )}
+                        {tx.status === 'VOIDED' && (
+                          <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold border border-rose-200">
+                            VOIDED
+                          </span>
                         )}
                         <button
                           onClick={() => setActiveReceipt(tx)}
@@ -379,7 +395,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         </div>
       </div>
 
-      {/* Modals for Editing & Deleting entries */}
+      {/* Modals for Editing, Deleting & Voiding entries */}
       <EditTransactionModal
         transaction={editingTransaction}
         isOpen={Boolean(editingTransaction)}
@@ -390,6 +406,12 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         transaction={deletingTransaction}
         isOpen={Boolean(deletingTransaction)}
         onClose={() => setDeletingTransaction(null)}
+      />
+
+      <VoidTransactionModal
+        transaction={voidingTransaction}
+        isOpen={Boolean(voidingTransaction)}
+        onClose={() => setVoidingTransaction(null)}
       />
 
       {/* Modals for Editing & Deleting Member Account */}

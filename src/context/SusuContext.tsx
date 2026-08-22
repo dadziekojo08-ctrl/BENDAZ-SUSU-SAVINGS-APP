@@ -100,6 +100,10 @@ interface SusuContextType {
   ) => boolean;
 
   deleteTransaction: (id: string, reason?: string) => boolean;
+  voidTransaction: (
+    id: string,
+    params: { reason: string; adminName?: string; overrideCode?: string }
+  ) => boolean;
 
   initiateWithdrawal: (params: {
     memberId: string;
@@ -1507,6 +1511,164 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
+  // Void / Undo Transaction with Admin Override
+  const voidTransaction = (
+    id: string,
+    params: { reason: string; adminName?: string; overrideCode?: string }
+  ): boolean => {
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return false;
+
+    const adminActor = params.adminName || currentUser?.name || 'Administrator';
+    const voidTimestamp = new Date().toISOString();
+
+    let updatedBankers = bankers;
+    let updatedMembers = members;
+
+    // 1. Revert Member balances, stamps and cycle count if not already voided
+    if (tx.memberId && tx.status !== 'VOIDED') {
+      updatedMembers = members.map((m) => {
+        if (m.id === tx.memberId) {
+          let updatedTotalBalance = m.totalBalance;
+          let updatedOfficeFee = m.officeFeePaid;
+          let updatedTotalSavings = m.totalSavingsAllTime;
+          let updatedWithdrawn = m.totalWithdrawnAllTime;
+          let updatedPaidDays = m.currentCyclePaidDays;
+
+          if (tx.type === 'DEPOSIT') {
+            if (tx.isFirstDepositOfficeFee) {
+              updatedOfficeFee = Math.max(0, m.officeFeePaid - tx.amount);
+            } else {
+              updatedTotalBalance = Math.max(0, m.totalBalance - tx.netAmount);
+            }
+            updatedTotalSavings = Math.max(0, m.totalSavingsAllTime - tx.amount);
+            updatedPaidDays = Math.max(0, m.currentCyclePaidDays - 1);
+          } else if (tx.type === 'WITHDRAWAL') {
+            if (tx.status === 'APPROVED' || tx.status === 'DISBURSED' || tx.status === 'COMPLETED') {
+              updatedTotalBalance = m.totalBalance + tx.amount;
+              updatedWithdrawn = Math.max(0, m.totalWithdrawnAllTime - tx.amount);
+            }
+          }
+
+          // Clear stamp if matching receipt number or day number
+          const targetDayNum = tx.susuDayNumber;
+          const updatedStamps = m.stamps.map((stamp) => {
+            if (
+              (stamp.receiptId && stamp.receiptId === tx.receiptNumber) ||
+              (targetDayNum && stamp.day === targetDayNum)
+            ) {
+              return {
+                day: stamp.day,
+                verified: false,
+                amount: undefined,
+                date: undefined,
+                receiptId: undefined,
+                bankerName: undefined,
+                isOfficeFee: undefined,
+              };
+            }
+            return stamp;
+          });
+
+          // Check if status needs to revert from cycle_ready
+          const newStatus = updatedPaidDays < m.susuCycleDays && m.status === 'cycle_ready' ? 'active' : m.status;
+
+          // Check if depositedToday should be cleared if the transaction is from today
+          const isTxToday = new Date(tx.timestamp).toDateString() === new Date().toDateString();
+          const depositedToday = isTxToday ? false : m.depositedToday;
+
+          const updatedM: Member = {
+            ...m,
+            totalBalance: updatedTotalBalance,
+            officeFeePaid: updatedOfficeFee,
+            totalSavingsAllTime: updatedTotalSavings,
+            totalWithdrawnAllTime: updatedWithdrawn,
+            currentCyclePaidDays: updatedPaidDays,
+            status: newStatus,
+            stamps: updatedStamps,
+            depositedToday,
+          };
+          firebaseService.saveMember(updatedM);
+          supabaseService.upsertMember(updatedM);
+          return updatedM;
+        }
+        return m;
+      });
+      setMembers(updatedMembers);
+    }
+
+    // 2. Revert Banker daily totals if transaction recorded today and not already voided
+    if (tx.bankerId && tx.status !== 'VOIDED') {
+      const isTxToday = new Date(tx.timestamp).toDateString() === new Date().toDateString();
+      if (isTxToday) {
+        updatedBankers = bankers.map((b) => {
+          if (b.id === tx.bankerId) {
+            const updatedB: Banker = {
+              ...b,
+              collectedToday: tx.type === 'DEPOSIT' ? Math.max(0, b.collectedToday - tx.amount) : b.collectedToday,
+              withdrawnToday: tx.type === 'WITHDRAWAL' ? Math.max(0, b.withdrawnToday - tx.amount) : b.withdrawnToday,
+            };
+            firebaseService.saveBanker(updatedB);
+            supabaseService.upsertBanker(updatedB);
+            return updatedB;
+          }
+          return b;
+        });
+        setBankers(updatedBankers);
+      }
+    }
+
+    // 3. Mark transaction as VOIDED in ledger
+    const updatedTx: Transaction = {
+      ...tx,
+      status: 'VOIDED',
+      rejectionReason: `Voided & Reverted by Admin Override (${adminActor}): ${params.reason}`,
+      notes: `${tx.notes ? `${tx.notes} | ` : ''}[VOIDED: ${params.reason} by ${adminActor} at ${new Date().toLocaleTimeString()}]`,
+    };
+
+    const updatedTransactions = transactions.map((t) => (t.id === id ? updatedTx : t));
+    setTransactions(updatedTransactions);
+    firebaseService.saveTransaction(updatedTx);
+    supabaseService.insertTransaction(updatedTx);
+
+    saveStoredData({
+      bankers: updatedBankers,
+      members: updatedMembers,
+      transactions: updatedTransactions,
+      routes,
+      reconciliations,
+      auditLogs,
+    });
+
+    // 4. Record Audit Log Entry
+    addAuditLog({
+      action: 'TRANSACTION_VOIDED',
+      actorName: adminActor,
+      actorRole: 'admin',
+      targetType: 'transaction',
+      targetId: tx.id,
+      targetName: tx.memberName,
+      amount: tx.amount,
+      description: `Transaction ${tx.receiptNumber} (${tx.type} of ${formatMoney(tx.amount)}) for ${tx.memberName} was VOIDED and reversed via Admin Override. Reason: ${params.reason}`,
+      details: {
+        transactionId: tx.id,
+        receiptNumber: tx.receiptNumber,
+        memberName: tx.memberName,
+        memberId: tx.memberId,
+        amount: tx.amount,
+        type: tx.type,
+        susuDayNumber: tx.susuDayNumber,
+        reason: params.reason,
+        authorizedBy: adminActor,
+        overrideCodeUsed: params.overrideCode ? 'YES (Verified)' : 'Admin Session',
+        voidTimestamp,
+      },
+      severity: 'alert',
+    });
+
+    return true;
+  };
+
   // Initiate Member Withdrawal
   const initiateWithdrawal = ({
     memberId,
@@ -1925,6 +2087,7 @@ export const SusuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         recordDeposit,
         editTransaction,
         deleteTransaction,
+        voidTransaction,
         initiateWithdrawal,
         approveWithdrawal,
         rejectWithdrawal,

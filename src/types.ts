@@ -78,7 +78,7 @@ export interface Member {
 
 export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'OFFICE_FEE_ALLOCATION';
 export type PaymentMethod = 'CASH' | 'MTN_MOMO' | 'TELECEL_CASH' | 'AIRTELTIGO' | 'BANK_TRANSFER';
-export type TransactionStatus = 'COMPLETED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'DISBURSED';
+export type TransactionStatus = 'COMPLETED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'DISBURSED' | 'VOIDED';
 export type PayoutMode = 'BANKER_CASH_HANDOVER' | 'ADMIN_MOMO_TRANSFER' | 'VAULT_OFFICE_PICKUP';
 
 export interface Transaction {
@@ -151,6 +151,7 @@ export type AuditActionType =
   | 'BANKER_DELETED'
   | 'TRANSACTION_EDITED'
   | 'TRANSACTION_DELETED'
+  | 'TRANSACTION_VOIDED'
   | 'DOUBLE_ENTRY_REMOVED'
   | 'RECONCILIATION_SETTLED'
   | 'ROUTE_CREATED'
