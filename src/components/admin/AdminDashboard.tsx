@@ -380,97 +380,105 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Total Collected Today */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
+        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-teal-500/5 p-5 rounded-2xl border border-emerald-200 shadow-2xs relative overflow-hidden group hover:border-emerald-300 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">
               Today's Collections
             </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs">
               <ArrowDownRight className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="mt-2">
-            <div className="text-2xl font-extrabold text-slate-900 font-display">
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">
               {formatMoney(totalCollectedToday)}
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
-              <span>Gross deposits today</span>
-              <span className="font-bold text-emerald-700">{bankers.length} Active Bankers</span>
+            <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+              <span className="text-slate-600">Gross field deposits</span>
+              <span className="font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md text-[11px]">
+                {bankers.length} Collectors Active
+              </span>
             </div>
           </div>
         </div>
 
         {/* KPI 2: Vault Cash */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
+        <div className="bg-gradient-to-br from-cyan-500/10 via-white to-blue-500/5 p-5 rounded-2xl border border-cyan-200 shadow-2xs relative overflow-hidden group hover:border-cyan-300 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-600" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-extrabold text-cyan-800 uppercase tracking-wider">
               Net Vault Cash
             </span>
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center shadow-xs">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="mt-2">
-            <div className="text-2xl font-extrabold text-slate-900 font-display">
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">
               {formatMoney(netVaultCashInHand)}
             </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-              <span>Withdrawn: {formatMoney(totalWithdrawnToday)}</span>
-              <span className="text-emerald-700 font-medium">Float Balanced</span>
+            <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+              <span>Withdrawn: <strong className="text-slate-700">{formatMoney(totalWithdrawnToday)}</strong></span>
+              <span className="text-cyan-800 font-bold bg-cyan-100/80 px-2 py-0.5 rounded-md text-[11px]">Float Balanced</span>
             </div>
           </div>
         </div>
 
         {/* KPI 3: Total Scheme Savings Pool */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
+        <div className="bg-gradient-to-br from-amber-500/10 via-white to-orange-500/5 p-5 rounded-2xl border border-amber-200 shadow-2xs relative overflow-hidden group hover:border-amber-300 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-extrabold text-amber-800 uppercase tracking-wider">
               Total Scheme Balance
             </span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs">
               <Coins className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="mt-2">
-            <div className="text-2xl font-extrabold text-slate-900 font-display">
+          <div className="mt-3">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">
               {formatMoney(totalSystemSavings)}
             </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-              <span>{totalMembersCount} Registered Savers</span>
-              <span className="font-semibold text-amber-700">31-Day Cycles</span>
+            <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+              <span className="text-slate-600">{totalMembersCount} Registered Savers</span>
+              <span className="font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md text-[11px]">31-Day Cycles</span>
             </div>
           </div>
         </div>
 
         {/* KPI 4: Active Bankers & Pending Payouts */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
+        <div className="bg-gradient-to-br from-indigo-500/10 via-white to-purple-500/5 p-5 rounded-2xl border border-indigo-200 shadow-2xs relative overflow-hidden group hover:border-indigo-300 transition-all">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider">
               Fleet & Payouts
             </span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xs">
               <Users className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="mt-2">
+          <div className="mt-3">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-extrabold text-slate-900 font-display">
+              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-display">
                 {totalActiveBankers}
               </span>
-              <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-                Collectors Online
+              <span className="text-xs text-emerald-800 font-bold px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200">
+                Online
               </span>
             </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
-              <span>{routes.length} Market Routes</span>
+            <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+              <span className="text-slate-600">{routes.length} Market Routes</span>
               {pendingWithdrawalsCount > 0 ? (
-                <span className="font-bold text-amber-700">{pendingWithdrawalsCount} Payouts Pending</span>
+                <span className="font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md text-[11px] animate-pulse">
+                  {pendingWithdrawalsCount} Payouts Pending
+                </span>
               ) : (
-                <span className="text-slate-400">0 Payout Requests</span>
+                <span className="text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">0 Payout Requests</span>
               )}
             </div>
           </div>
@@ -478,17 +486,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Navigation Buttons Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-white to-slate-50">
           <div className="flex flex-wrap items-center gap-2">
             {[
-              { id: 'monitor', label: 'Live Bankers Fleet Monitor', icon: Radio, count: totalActiveBankers },
-              { id: 'bankers', label: 'Banker Account & Route', icon: Users, count: bankers.length },
-              { id: 'withdrawals', label: 'Withdrawal Approvals', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0 },
-              { id: 'members', label: 'All Members Directory', icon: Coins, count: members.length },
-              { id: 'ledger', label: 'Daily Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
-              { id: 'routes', label: 'Market Routes & Zones', icon: MapPin, count: routes.length },
-              { id: 'audit', label: 'Audit Trail & Operations', icon: ShieldCheck, count: auditLogs.length },
+              { id: 'monitor', label: 'Live Fleet Monitor', icon: Radio, count: totalActiveBankers, activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/20' },
+              { id: 'bankers', label: 'Bankers & Routes', icon: Users, count: bankers.length, activeClass: 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20' },
+              { id: 'withdrawals', label: 'Withdrawal Approvals', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0, activeClass: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-amber-500/20' },
+              { id: 'members', label: 'Savers Directory', icon: Coins, count: members.length, activeClass: 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-blue-500/20' },
+              { id: 'ledger', label: 'Transaction Ledger', icon: FileSpreadsheet, count: transactions.length, activeClass: 'bg-gradient-to-r from-teal-600 to-emerald-700 text-white shadow-teal-500/20' },
+              { id: 'routes', label: 'Market Routes', icon: MapPin, count: routes.length, activeClass: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-500/20' },
+              { id: 'audit', label: 'Audit Trail', icon: ShieldCheck, count: auditLogs.length, activeClass: 'bg-gradient-to-r from-slate-800 to-slate-900 text-white' },
             ].map((btn) => {
               const Icon = btn.icon;
               const isActive = activeTab === btn.id;
@@ -499,8 +507,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onClick={() => setActiveTab(btn.id as any)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs ${
                     isActive
-                      ? 'bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-700/20'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
+                      ? `${btn.activeClass} shadow-md ring-2 ring-emerald-500/20 scale-[1.02]`
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -509,9 +517,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <span
                       className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                         btn.alert
-                          ? 'bg-amber-400 text-slate-900 animate-pulse font-extrabold'
+                          ? 'bg-rose-500 text-white animate-pulse font-extrabold shadow-xs'
                           : isActive
-                          ? 'bg-white/20 text-white'
+                          ? 'bg-white/25 text-white'
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
@@ -526,7 +534,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs hover:border-emerald-300"
               title="Export Transactions to CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />

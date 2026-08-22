@@ -1,6 +1,5 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  initializeFirestore,
   getFirestore,
   Firestore,
   doc,
@@ -21,29 +20,8 @@ let isConfigured = false;
 
 try {
   if (firebaseConfig && firebaseConfig.projectId && firebaseConfig.apiKey) {
-    const app: FirebaseApp =
-      getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    const databaseId =
-      firebaseConfig.firestoreDatabaseId &&
-      firebaseConfig.firestoreDatabaseId !== '(default)'
-        ? firebaseConfig.firestoreDatabaseId
-        : undefined;
-
-    try {
-      firestoreDb = initializeFirestore(
-        app,
-        {
-          experimentalForceLongPolling: true,
-          ignoreUndefinedProperties: true,
-        },
-        databaseId
-      );
-    } catch {
-      firestoreDb = databaseId
-        ? getFirestore(app, databaseId)
-        : getFirestore(app);
-    }
-
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
     isConfigured = true;
   }
 } catch (err) {

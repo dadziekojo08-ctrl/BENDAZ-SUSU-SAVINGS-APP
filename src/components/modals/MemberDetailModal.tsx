@@ -78,17 +78,17 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
     >
       <div className="bg-white text-slate-800 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]">
         {/* Header Profile */}
-        <div className="bg-slate-900 px-5 py-4 text-white flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+        <div className="bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900 px-5 py-4 text-white flex flex-wrap items-center justify-between gap-3 border-b border-teal-900 shrink-0">
           <div className="flex items-center gap-3">
             <img
               src={member.avatar}
               alt={member.name}
-              className="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-sm"
+              className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-400/50 shadow-md ring-2 ring-emerald-400/20"
             />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-lg text-white font-display">{member.name}</h2>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 shadow-2xs">
                   {member.accountNumber || member.id}
                 </span>
                 {member.status === 'cycle_ready' && (
@@ -97,7 +97,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-emerald-100/80 flex items-center gap-2 mt-0.5">
                 <span>{member.locationStall}</span>
                 <span>•</span>
                 <span>{member.phone}</span>
@@ -112,7 +112,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               <>
                 <button
                   onClick={() => setIsEditingMember(true)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-xl border border-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Edit Saver Profile & Settings"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
@@ -121,7 +121,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
                 <button
                   onClick={() => setIsDeletingMember(true)}
-                  className="bg-red-950/60 hover:bg-red-900 text-red-300 px-2.5 py-1.5 rounded-xl border border-red-800/50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="bg-rose-950/60 hover:bg-rose-900 text-rose-200 px-2.5 py-1.5 rounded-xl border border-rose-700/50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Delete Saver Account"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -132,7 +132,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
             <button
               onClick={handlePrintPassbook}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl border border-slate-700 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl border border-white/20 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Print Passbook Statement"
             >
               <Printer className="w-4 h-4" />
@@ -140,7 +140,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
