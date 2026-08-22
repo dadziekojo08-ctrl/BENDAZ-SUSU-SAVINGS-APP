@@ -47,7 +47,6 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
     members,
     transactions,
     formatMoney,
-    getCurrencySymbol,
     recordDeposit,
     setActiveReceipt,
   } = useSusu();
@@ -59,14 +58,14 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
 
   if (!activeBanker) {
     return (
-      <div className="max-w-md mx-auto my-12 p-8 text-center bg-white rounded-3xl border border-[#DCD7C2] shadow-sm space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#F4F1EA] text-[#6A6A55] flex items-center justify-center mx-auto">
+      <div className="max-w-md mx-auto my-12 p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
           <Wallet className="w-6 h-6" />
         </div>
         <div>
-          <h3 className="font-serif-brand font-bold text-lg text-[#383B2B]">No Field Banker Profile Available</h3>
-          <p className="text-xs text-[#7A7A65] mt-1">
-            Please log in with an authorized Field Banker account or create a new banker from Admin HQ.
+          <h3 className="font-bold text-lg text-slate-800 font-display">No Field Banker Profile Available</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Please sign in with an authorized Field Banker account or create a new banker in Admin HQ.
           </p>
         </div>
       </div>
@@ -130,10 +129,10 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
         bankerId: activeBanker.id,
         amount: member.dailyTarget,
         paymentMethod: 'CASH',
-        notes: `Quick 1-click cash collection at ${member.locationStall}`,
+        notes: `Quick collection at ${member.locationStall}`,
       });
     } catch (e: any) {
-      alert(e.message || 'Error collecting deposit');
+      console.error(e);
     }
   };
 
@@ -143,35 +142,35 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Banker Profile & Route Header Card */}
-      <div className="bg-[#383B2B] rounded-3xl p-6 text-white shadow-xl border border-[#4A4D3A]">
+      <div className="bg-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-lg border border-slate-800">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3.5">
             <img
               src={activeBanker.avatar}
               alt={activeBanker.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-[#8E9775] shadow-md ring-4 ring-[#8E9775]/20"
+              className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/20"
             />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-[#8E9775]/30 text-[#EAE7DC] border border-[#8E9775]/40 font-bold">
-                  {activeBanker.id} • Field Banker
+                <span className="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700 font-bold">
+                  {activeBanker.id} • Field Collector
                 </span>
                 {activeBanker.status === 'reconciled' ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAE7DC]/20 text-[#EAE7DC] border border-[#EAE7DC]/40">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
                     Shift Settled
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8E9775]/40 text-[#EAE7DC] border border-[#8E9775] animate-pulse">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse">
                     ● Active Route
                   </span>
                 )}
               </div>
-              <h1 className="font-serif-brand font-bold text-2xl tracking-tight text-[#F9F8F4] mt-1">
+              <h1 className="font-bold text-xl sm:text-2xl tracking-tight text-white mt-1 font-display">
                 {activeBanker.name}
               </h1>
-              <p className="text-xs text-[#D8D5C8] flex items-center gap-1.5 mt-0.5">
-                <MapPin className="w-3.5 h-3.5 text-[#8E9775]" />
-                <span>{activeBanker.routeName || 'General Market Collection'}</span>
+              <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{activeBanker.routeName || 'Market Collection Route'}</span>
               </p>
             </div>
           </div>
@@ -179,7 +178,7 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onOpenReconcile(activeBanker.id)}
-              className="bg-[#C27D50] hover:bg-[#B06F45] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-transform active:scale-95 cursor-pointer"
+              className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <Scale className="w-4 h-4" />
               <span>Settle Shift Cash</span>
@@ -187,79 +186,75 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
 
             <button
               onClick={onOpenNewMember}
-              className="bg-white/10 hover:bg-white/20 text-[#F9F8F4] border border-white/20 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <UserPlus className="w-3.5 h-3.5 text-[#8E9775]" />
-              <span>Create Account</span>
+              <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Add Saver</span>
             </button>
           </div>
         </div>
 
         {/* Collection & Float Breakdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-[#4A4D3A]">
-          <div className="bg-[#2E3123] p-3.5 rounded-2xl border border-[#4A4D3A]">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-[#D8D5C8]">Today's Total Collected:</span>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-800">
+          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+            <span className="text-xs text-slate-400 block">Today's Collections:</span>
             <div className="text-xl font-extrabold text-white font-display mt-0.5">
               {formatMoney(activeBanker.collectedToday)}
             </div>
-            <span className="text-[11px] text-[#8E9775] block mt-1">
-              Field Cash Inflow
+            <span className="text-[11px] text-emerald-400 block mt-0.5">
+              Gross field inflow
             </span>
           </div>
 
-          <div className="bg-[#2E3123] p-3.5 rounded-2xl border border-[#4A4D3A]">
-            <span className="text-xs text-[#D8D5C8] block">Cash in Bag (Remittance Due):</span>
-            <div className="text-xl font-extrabold text-[#8E9775] font-display mt-0.5">
+          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+            <span className="text-xs text-slate-400 block">Cash in Bag (Remit Due):</span>
+            <div className="text-xl font-extrabold text-emerald-400 font-display mt-0.5">
               {formatMoney(netCashInBag)}
             </div>
-            <span className="text-[11px] text-[#A8A598] block mt-1">
-              Disbursed for Payouts: {formatMoney(activeBanker.withdrawnToday)}
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              Disbursed: {formatMoney(activeBanker.withdrawnToday)}
             </span>
           </div>
 
-          <div className="bg-[#2E3123] p-3.5 rounded-2xl border border-[#4A4D3A]">
-            <span className="text-xs text-[#D8D5C8] block">Stops Visited Today:</span>
-            <div className="text-xl font-extrabold text-[#D4A359] font-display mt-0.5">
+          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+            <span className="text-xs text-slate-400 block">Stops Visited Today:</span>
+            <div className="text-xl font-extrabold text-amber-400 font-display mt-0.5">
               {completedMembers.length} / {myAssignedMembers.length} Stalls
             </div>
-            <span className="text-[11px] text-[#A8A598] block mt-1">
-              {pendingMembers.length} stops remaining on route
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              {pendingMembers.length} stops remaining
             </span>
           </div>
         </div>
       </div>
 
       {/* Main Route Stops Card */}
-      <div className="bg-white rounded-3xl border border-[#EAE7DC] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {/* Controls Bar */}
-        <div className="p-5 border-b border-[#EAE7DC] space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <h2 className="font-serif-brand font-bold text-lg text-[#3A3D2C]">
-                Route Stops & Savers Checklist
-              </h2>
-              <p className="text-xs text-[#7A7A65]">
-                Record daily collections, search stall locations, and filter by collector or payment status.
-              </p>
-            </div>
+        <div className="p-4 sm:p-5 border-b border-slate-200 space-y-3 bg-slate-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <h2 className="font-bold text-base text-slate-900 font-display">
+              Route Savers Checklist
+            </h2>
+            <p className="text-xs text-slate-500">
+              Record daily deposits, search stalls, and track collection progress.
+            </p>
           </div>
 
           {/* Search Input with Clear Button */}
           <div className="relative">
-            <Search className="w-4 h-4 text-[#8A8A70] absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="Search saver by name, stall number, ID, or phone..."
+              placeholder="Search by saver name, stall number, account #, or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-9 py-2.5 bg-[#F9F8F4] border border-[#D8D5C8] rounded-xl text-xs focus:ring-2 focus:ring-[#8E9775] focus:outline-none text-[#4A4A40] font-medium shadow-2xs"
+              className="w-full pl-10 pr-9 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 font-medium shadow-2xs"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-3 text-[#8A8A70] hover:text-[#383B2B] p-0.5 rounded-full hover:bg-[#EAE7DC] transition-colors cursor-pointer"
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-0.5 rounded-full transition-colors cursor-pointer"
                 title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
@@ -268,18 +263,18 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
           </div>
 
           {/* Filter Dropdowns Bar */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Banker / Scope Filter */}
-            <div className="flex items-center gap-1.5 bg-[#F9F8F4] px-2.5 py-1.5 rounded-xl border border-[#D8D5C8] text-xs shadow-2xs">
-              <User className="w-3.5 h-3.5 text-[#6A6A55]" />
-              <span className="text-[11px] font-bold text-[#7A7A65] uppercase">Banker:</span>
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs shadow-2xs">
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Scope:</span>
               <select
                 value={selectedBankerFilter}
                 onChange={(e) => setSelectedBankerFilter(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-[#3A3D2C] focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1"
               >
                 <option value="MY_ASSIGNED">My Route Savers ({myAssignedMembers.length})</option>
-                <option value="ALL">All Field Bankers ({members.length})</option>
+                <option value="ALL">All Savers ({members.length})</option>
                 {bankers
                   .filter((b) => b.id !== activeBanker.id)
                   .map((b) => {
@@ -294,40 +289,40 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
             </div>
 
             {/* Status Filter Dropdown */}
-            <div className="flex items-center gap-1.5 bg-[#F9F8F4] px-2.5 py-1.5 rounded-xl border border-[#D8D5C8] text-xs shadow-2xs">
-              <Filter className="w-3.5 h-3.5 text-[#6A6A55]" />
-              <span className="text-[11px] font-bold text-[#7A7A65] uppercase">Status:</span>
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs shadow-2xs">
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Status:</span>
               <select
                 value={selectedStatusFilter}
                 onChange={(e) => setSelectedStatusFilter(e.target.value as any)}
-                className="bg-transparent text-xs font-semibold text-[#3A3D2C] focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1"
               >
                 <option value="ALL">All Statuses ({baseMembers.length})</option>
                 <option value="PENDING">
-                  ⏳ Pending Collection ({baseMembers.filter((m) => !m.depositedToday).length})
+                  Pending Collection ({baseMembers.filter((m) => !m.depositedToday).length})
                 </option>
                 <option value="PAID_TODAY">
-                  ✓ Collected Today ({baseMembers.filter((m) => m.depositedToday).length})
+                  ✓ Paid Today ({baseMembers.filter((m) => m.depositedToday).length})
                 </option>
                 <option value="CYCLE_COMPLETED">
-                  🏁 31-Day Cycle Done ({baseMembers.filter((m) => m.currentCyclePaidDays >= m.susuCycleDays).length})
+                  Cycle Completed ({baseMembers.filter((m) => m.currentCyclePaidDays >= m.susuCycleDays).length})
                 </option>
                 <option value="IN_PROGRESS">
-                  🔄 In Progress ({baseMembers.filter((m) => m.currentCyclePaidDays < m.susuCycleDays).length})
+                  In Progress ({baseMembers.filter((m) => m.currentCyclePaidDays < m.susuCycleDays).length})
                 </option>
               </select>
             </div>
 
             {/* Sort Order Dropdown */}
-            <div className="flex items-center gap-1.5 bg-[#F9F8F4] px-2.5 py-1.5 rounded-xl border border-[#D8D5C8] text-xs shadow-2xs">
-              <ArrowUpDown className="w-3.5 h-3.5 text-[#6A6A55]" />
-              <span className="text-[11px] font-bold text-[#7A7A65] uppercase">Sort:</span>
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs shadow-2xs">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase">Sort:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent text-xs font-semibold text-[#3A3D2C] focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer pr-1"
               >
-                <option value="stall">Stall / Location</option>
+                <option value="stall">Stall Location</option>
                 <option value="name_asc">Name (A → Z)</option>
                 <option value="name_desc">Name (Z → A)</option>
                 <option value="balance_desc">Highest Balance</option>
@@ -344,37 +339,21 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
                   setSelectedStatusFilter('ALL');
                   setSortBy('stall');
                 }}
-                className="text-xs font-bold text-[#C27D50] hover:text-[#9A5025] flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-[#C27D50]/10 transition-colors cursor-pointer ml-auto"
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-amber-50 transition-colors cursor-pointer ml-auto"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
+                <span>Reset</span>
               </button>
-            )}
-          </div>
-
-          {/* Filter Status Badge / Counter */}
-          <div className="flex items-center justify-between text-[11px] text-[#7A7A65] pt-1 border-t border-[#EAE7DC]/80">
-            <span>
-              Showing <strong className="text-[#383B2B]">{filteredMembers.length}</strong> of{' '}
-              <strong className="text-[#383B2B]">{baseMembers.length}</strong> savers
-            </span>
-            {selectedBankerFilter !== 'MY_ASSIGNED' && (
-              <span className="bg-[#8E9775]/20 text-[#383B2B] px-2 py-0.5 rounded-md font-semibold text-[10px]">
-                Viewing:{' '}
-                {selectedBankerFilter === 'ALL'
-                  ? 'All Bankers'
-                  : bankers.find((b) => b.id === selectedBankerFilter)?.name || selectedBankerFilter}
-              </span>
             )}
           </div>
         </div>
 
         {/* Member Stops List */}
-        <div className="divide-y divide-[#EAE7DC] p-2">
+        <div className="divide-y divide-slate-100 p-2">
           {filteredMembers.length === 0 ? (
-            <div className="text-center py-12 px-4 text-[#8A8A70] text-xs space-y-2">
-              <Search className="w-6 h-6 mx-auto text-[#A8A598]" />
-              <p className="font-semibold text-[#4A4A40]">No savers found matching current search or filters.</p>
+            <div className="text-center py-12 px-4 text-slate-400 text-xs space-y-2">
+              <Search className="w-6 h-6 mx-auto text-slate-300" />
+              <p className="font-semibold text-slate-600">No savers found matching your criteria.</p>
               <button
                 onClick={() => {
                   setSearchQuery('');
@@ -382,9 +361,9 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
                   setSelectedStatusFilter('ALL');
                   setSortBy('stall');
                 }}
-                className="px-3 py-1.5 bg-[#F4F1EA] hover:bg-[#EAE7DC] text-[#383B2B] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
-                Clear Search & Filters
+                Clear Filters
               </button>
             </div>
           ) : (
@@ -393,64 +372,56 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
               return (
                 <div
                   key={member.id}
-                  className={`p-4 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 my-1 ${
+                  className={`p-3 sm:p-4 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 my-1 ${
                     isPaid
-                      ? 'bg-[#8E9775]/10 border border-[#8E9775]/30'
-                      : 'bg-white hover:bg-[#F9F8F4] border border-[#EAE7DC] shadow-xs'
+                      ? 'bg-emerald-50/60 border border-emerald-200'
+                      : 'bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs'
                   }`}
                 >
                   {/* Member Info */}
                   <div
-                    className="flex items-center gap-3.5 cursor-pointer"
+                    className="flex items-center gap-3 cursor-pointer"
                     onClick={() => onSelectMember(member)}
                   >
                     <img
                       src={member.avatar}
                       alt={member.name}
-                      className="w-12 h-12 rounded-2xl object-cover border border-[#D8D5C8] shadow-xs"
+                      className="w-11 h-11 rounded-xl object-cover border border-slate-200 shadow-2xs"
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-[#3A3D2C]">{member.name}</h4>
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#EAE7DC] text-[#4A5038]">
+                        <h4 className="font-bold text-sm text-slate-900">{member.name}</h4>
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">
                           {member.accountNumber || member.id}
                         </span>
                         {isPaid ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8E9775]/20 text-[#4A5038] border border-[#8E9775]/30 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-[#5A5E46]" />
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             PAID TODAY
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C27D50]/20 text-[#9A5025] flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#C27D50]" />
-                            VISIT PENDING
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            DUE
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-[#6A6A55] flex flex-wrap items-center gap-1.5 mt-0.5">
+                      <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                         <span className="flex items-center gap-1">
-                          <Store className="w-3 h-3 text-[#8A8A70]" />
+                          <Store className="w-3 h-3 text-slate-400" />
                           <span>{member.locationStall}</span>
                         </span>
-                        <span className="text-[#D8D5C8]">•</span>
+                        <span>•</span>
                         <span>{member.phone}</span>
-                        {member.assignedBankerId !== activeBanker.id && member.assignedBankerName && (
-                          <>
-                            <span className="text-[#D8D5C8]">•</span>
-                            <span className="bg-[#EAE7DC] text-[#4A4A40] text-[10px] px-1.5 py-0.2 rounded font-semibold">
-                              {member.assignedBankerName}
-                            </span>
-                          </>
-                        )}
                       </p>
 
-                      <div className="flex items-center gap-3 mt-1 text-xs">
-                        <span className="text-[#6A6A55]">
-                          Balance: <strong className="text-[#5A5E46]">{formatMoney(member.totalBalance)}</strong>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs">
+                        <span className="text-slate-600">
+                          Balance: <strong className="text-emerald-700">{formatMoney(member.totalBalance)}</strong>
                         </span>
-                        <span className="text-[#D8D5C8]">•</span>
-                        <span className="text-[#6A6A55]">
+                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-600">
                           Card: <strong>Day {member.currentCyclePaidDays}/{member.susuCycleDays}</strong>
                         </span>
                       </div>
@@ -462,7 +433,7 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
                     {!isPaid ? (
                       <button
                         onClick={() => handleQuickDeposit(member)}
-                        className="bg-[#8E9775] hover:bg-[#7D8665] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                       >
                         <ArrowDownRight className="w-3.5 h-3.5" />
                         <span>Collect {formatMoney(member.dailyTarget)}</span>
@@ -470,25 +441,25 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
                     ) : (
                       <button
                         onClick={() => onOpenDeposit(member.id)}
-                        className="bg-[#8E9775]/20 hover:bg-[#8E9775]/30 text-[#4A5038] px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <ArrowDownRight className="w-3.5 h-3.5" />
-                        <span>+ Extra Deposit</span>
+                        <span>+ Extra</span>
                       </button>
                     )}
 
                     <button
                       onClick={() => onOpenWithdrawal(member.id)}
-                      className="bg-[#C27D50]/15 hover:bg-[#C27D50]/25 text-[#9A5025] border border-[#C27D50]/30 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                      title="Initiate Member Savings Withdrawal"
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Request Member Withdrawal"
                     >
                       <ArrowUpRight className="w-3.5 h-3.5" />
-                      <span>Withdraw</span>
+                      <span>Payout</span>
                     </button>
 
                     <button
                       onClick={() => onSelectMember(member)}
-                      className="p-2 hover:bg-[#EAE7DC] rounded-xl text-[#7A7A65] cursor-pointer"
+                      className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 cursor-pointer"
                       title="Inspect Passbook"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -502,54 +473,58 @@ export const BankerPortal: React.FC<BankerPortalProps> = ({
       </div>
 
       {/* Banker Today Recent Transactions */}
-      <div className="bg-white rounded-3xl border border-[#EAE7DC] p-5 shadow-sm space-y-3">
-        <h3 className="font-serif-brand font-bold text-base text-[#3A3D2C]">
-          My Collection Activity Today ({bankerTodayTransactions.length} Transactions)
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3">
+        <h3 className="font-bold text-sm text-slate-800 font-display">
+          My Activity Today ({bankerTodayTransactions.length} Transactions)
         </h3>
 
         <div className="space-y-2">
-          {bankerTodayTransactions.slice(0, 5).map((tx) => (
-            <div
-              key={tx.id}
-              className="p-3 rounded-xl bg-[#F9F8F4] hover:bg-[#EAE7DC]/60 transition-colors flex items-center justify-between text-xs"
-            >
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold ${
-                    tx.type === 'DEPOSIT'
-                      ? 'bg-[#8E9775]/20 text-[#4A5038]'
-                      : 'bg-[#C27D50]/20 text-[#9A5025]'
-                  }`}
-                >
-                  {tx.type === 'DEPOSIT' ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+          {bankerTodayTransactions.length === 0 ? (
+            <p className="text-xs text-slate-400 py-3 text-center">No transactions recorded yet today.</p>
+          ) : (
+            bankerTodayTransactions.slice(0, 6).map((tx) => (
+              <div
+                key={tx.id}
+                className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold ${
+                      tx.type === 'DEPOSIT'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {tx.type === 'DEPOSIT' ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 block">{tx.memberName}</span>
+                    <span className="text-[10px] text-slate-500">
+                      {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {tx.paymentMethod.replace(/_/g, ' ')}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-[#3A3D2C] block">{tx.memberName}</span>
-                  <span className="text-[10px] text-[#8A8A70]">
-                    {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {tx.paymentMethod.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                <span
-                  className={`font-mono font-bold text-sm ${
-                    tx.type === 'DEPOSIT' ? 'text-[#5A5E46]' : 'text-[#C27D50]'
-                  }`}
-                >
-                  {tx.type === 'DEPOSIT' ? '+' : '-'}
-                  {formatMoney(tx.amount)}
-                </span>
-                <button
-                  onClick={() => setActiveReceipt(tx)}
-                  className="p-1 hover:bg-[#EAE7DC] rounded text-[#6A6A55] cursor-pointer"
-                  title="View Receipt Slip"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={`font-mono font-bold text-xs ${
+                      tx.type === 'DEPOSIT' ? 'text-emerald-700' : 'text-amber-800'
+                    }`}
+                  >
+                    {tx.type === 'DEPOSIT' ? '+' : '-'}
+                    {formatMoney(tx.amount)}
+                  </span>
+                  <button
+                    onClick={() => setActiveReceipt(tx)}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-600 cursor-pointer"
+                    title="View Receipt Slip"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

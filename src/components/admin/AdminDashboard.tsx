@@ -333,40 +333,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#8E9775] animate-ping"></span>
-            <h1 className="font-serif-brand font-bold text-2xl text-[#3A3D2C] tracking-tight">
-              Admin HQ Executive Dashboard
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <h1 className="font-bold text-2xl text-slate-900 tracking-tight font-display">
+              Admin HQ Dashboard
             </h1>
           </div>
-          <p className="text-xs text-[#7A7A65] mt-0.5">
-            Real-time daily Susu thrift collection monitor, mobile banker fleet & member treasury.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Daily Susu thrift management, mobile collector fleet & member treasury.
           </p>
         </div>
 
         {/* Quick Admin Actions */}
         <div className="flex items-center gap-2">
           <button
-            onClick={onOpenNewBanker}
-            className="bg-[#5A5A40] hover:bg-[#4A4D3A] text-[#F9F8F4] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+            onClick={onOpenNewMember}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-[#D8D5C8]" />
+            <Plus className="w-3.5 h-3.5" />
+            <span>Create Saver</span>
+          </button>
+
+          <button
+            onClick={onOpenNewBanker}
+            className="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
             <span>Create Banker</span>
           </button>
 
           <button
-            onClick={onOpenNewMember}
-            className="bg-[#8E9775] hover:bg-[#7D8665] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-[#EAE7DC]" />
-            <span>Create Account</span>
-          </button>
-
-          <button
             onClick={() => onOpenReconcile()}
-            className="bg-[#C27D50] hover:bg-[#B06F45] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+            className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Scale className="w-3.5 h-3.5" />
-            <span>End-of-Day Settle</span>
+            <span>Daily Cash Settle</span>
           </button>
         </div>
       </div>
@@ -374,97 +374,97 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Total Collected Today */}
-        <div className="bg-white p-5 rounded-2xl border border-[#EAE7DC] shadow-sm relative overflow-hidden">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8A8A70] uppercase tracking-wider">
-              Today's Inflow Collected
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Today's Collections
             </span>
-            <div className="w-9 h-9 rounded-xl bg-[#8E9775]/20 text-[#5A5E46] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <ArrowDownRight className="w-5 h-5" />
             </div>
           </div>
 
           <div className="mt-2">
-            <div className="text-2xl font-extrabold text-[#3A3D2C] font-display">
+            <div className="text-2xl font-extrabold text-slate-900 font-display">
               {formatMoney(totalCollectedToday)}
             </div>
-            <div className="flex items-center justify-between text-xs text-[#7A7A65] mt-1">
-              <span>Total Gross Deposits Today</span>
-              <span className="font-bold text-[#5A5E46]">{bankers.length} Bankers Active</span>
+            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+              <span>Gross deposits today</span>
+              <span className="font-bold text-emerald-700">{bankers.length} Active Bankers</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 2: Disbursed Withdrawals & Net Vault Cash */}
-        <div className="bg-white p-5 rounded-2xl border border-[#EAE7DC] shadow-sm relative overflow-hidden">
+        {/* KPI 2: Vault Cash */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8A8A70] uppercase tracking-wider">
-              Net Vault Cash in Hand
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Net Vault Cash
             </span>
-            <div className="w-9 h-9 rounded-xl bg-[#EAE7DC] text-[#4A4D3A] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
 
           <div className="mt-2">
-            <div className="text-2xl font-extrabold text-[#4A4D3A] font-display">
+            <div className="text-2xl font-extrabold text-slate-900 font-display">
               {formatMoney(netVaultCashInHand)}
             </div>
-            <div className="text-xs text-[#7A7A65] mt-1 flex items-center justify-between">
-              <span>Withdrawn Today: {formatMoney(totalWithdrawnToday)}</span>
-              <span className="text-[#8E9775] font-medium">Float Balanced</span>
+            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+              <span>Withdrawn: {formatMoney(totalWithdrawnToday)}</span>
+              <span className="text-emerald-700 font-medium">Float Balanced</span>
             </div>
           </div>
         </div>
 
         {/* KPI 3: Total Scheme Savings Pool */}
-        <div className="bg-white p-5 rounded-2xl border border-[#EAE7DC] shadow-sm relative overflow-hidden">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8A8A70] uppercase tracking-wider">
-              Total Susu Scheme Balance
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Total Scheme Balance
             </span>
-            <div className="w-9 h-9 rounded-xl bg-[#D4A359]/20 text-[#8F6522] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
               <Coins className="w-5 h-5" />
             </div>
           </div>
 
           <div className="mt-2">
-            <div className="text-2xl font-extrabold text-[#5A4522] font-display">
+            <div className="text-2xl font-extrabold text-slate-900 font-display">
               {formatMoney(totalSystemSavings)}
             </div>
-            <div className="text-xs text-[#7A7A65] mt-1 flex items-center justify-between">
+            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
               <span>{totalMembersCount} Registered Savers</span>
-              <span className="font-semibold text-[#8F6522]">31-Day Cycles</span>
+              <span className="font-semibold text-amber-700">31-Day Cycles</span>
             </div>
           </div>
         </div>
 
         {/* KPI 4: Active Bankers & Pending Payouts */}
-        <div className="bg-white p-5 rounded-2xl border border-[#EAE7DC] shadow-sm relative overflow-hidden">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#8A8A70] uppercase tracking-wider">
-              Banker Fleet Status
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Fleet & Payouts
             </span>
-            <div className="w-9 h-9 rounded-xl bg-[#D8D5C8]/40 text-[#4A4A40] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
           </div>
 
           <div className="mt-2">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-extrabold text-[#3A3D2C] font-display">
+              <span className="text-2xl font-extrabold text-slate-900 font-display">
                 {totalActiveBankers}
               </span>
-              <span className="text-xs text-[#5A5E46] font-bold px-2 py-0.5 rounded-full bg-[#8E9775]/20 border border-[#8E9775]/30">
-                All on Route
+              <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
+                Collectors Online
               </span>
             </div>
-            <div className="text-xs text-[#7A7A65] mt-1 flex items-center justify-between">
-              <span>{routes.length} Active Market Lines</span>
+            <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+              <span>{routes.length} Market Routes</span>
               {pendingWithdrawalsCount > 0 ? (
-                <span className="font-bold text-[#C27D50]">{pendingWithdrawalsCount} Payouts Pending</span>
+                <span className="font-bold text-amber-700">{pendingWithdrawalsCount} Payouts Pending</span>
               ) : (
-                <span className="text-[#8A8A70]">0 Payout Requests</span>
+                <span className="text-slate-400">0 Payout Requests</span>
               )}
             </div>
           </div>
@@ -472,17 +472,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Tabs Bar */}
-      <div className="bg-white rounded-2xl border border-[#EAE7DC] shadow-sm overflow-hidden">
-        <div className="px-6 border-b border-[#EAE7DC] flex flex-wrap items-center justify-between gap-4 bg-[#F9F8F4]">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="px-4 sm:px-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 overflow-x-auto">
             {[
-              { id: 'monitor', label: 'Live Bankers Fleet Monitor', icon: Radio, count: totalActiveBankers },
-              { id: 'bankers', label: 'Banker Accounts & Routes', icon: Users, count: bankers.length },
-              { id: 'withdrawals', label: 'Withdrawal Approvals', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0 },
-              { id: 'members', label: 'All Members Directory', icon: Coins, count: members.length },
-              { id: 'ledger', label: 'Daily Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
-              { id: 'routes', label: 'Market Routes & Zones', icon: MapPin, count: routes.length },
-              { id: 'audit', label: 'Audit Trail & Operations', icon: ShieldCheck, count: auditLogs.length },
+              { id: 'members', label: 'Savers & Members', icon: Coins, count: members.length },
+              { id: 'bankers', label: 'Field Bankers', icon: Users, count: bankers.length },
+              { id: 'withdrawals', label: 'Payout Requests', icon: Clock, count: pendingWithdrawalsCount, alert: pendingWithdrawalsCount > 0 },
+              { id: 'ledger', label: 'Transaction Ledger', icon: FileSpreadsheet, count: transactions.length },
+              { id: 'monitor', label: 'Fleet Monitor', icon: Radio, count: totalActiveBankers },
+              { id: 'routes', label: 'Market Routes', icon: MapPin, count: routes.length },
+              { id: 'audit', label: 'Audit Trail', icon: ShieldCheck, count: auditLogs.length },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -490,22 +490,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-3.5 text-xs font-bold border-b-2 flex items-center gap-2 transition-all ${
+                  className={`py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
                     isActive
-                      ? 'border-[#5A5A40] text-[#3A3D2C]'
-                      : 'border-transparent text-[#7A7A65] hover:text-[#3A3D2C] hover:border-[#D8D5C8]'
+                      ? 'border-emerald-600 text-emerald-800'
+                      : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#5A5A40]' : 'text-[#8A8A70]'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>{tab.label}</span>
                   {tab.count !== undefined && (
                     <span
                       className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
                         tab.alert
-                          ? 'bg-[#C27D50] text-white animate-pulse'
+                          ? 'bg-amber-500 text-white animate-pulse'
                           : isActive
-                          ? 'bg-[#8E9775]/25 text-[#4A4D3A]'
-                          : 'bg-[#EAE7DC] text-[#7A7A65]'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-200 text-slate-600'
                       }`}
                     >
                       {tab.count}
@@ -519,10 +519,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="py-2 flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-2.5 py-1.5 rounded-lg border border-[#D8D5C8] bg-white hover:bg-[#F9F8F4] text-[#4A4A40] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Export Transactions to CSV"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-[#8E9775]" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
           </div>
